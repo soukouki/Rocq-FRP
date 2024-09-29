@@ -7,6 +7,7 @@ Set Implicit Arguments.
 
 Require Import ssreflect.
 Require Import List Nat.
+Import PeanoNat.Nat.
 Import ListNotations.
 
 Module FRP.
@@ -73,6 +74,33 @@ End FRPNotations.
 
 Import FRPNotations.
 
+Lemma eqb_eq (x y : time) : x =? y = true <-> x = y.
+Proof.
+split.
+- rewrite /time_eq.
+  suff: time_compare x y = Eq -> x = y => [ H1 | ].
+    case_eq (time_compare x y) => // H2 _.
+    by apply H1.
+  move: y.
+  induction x as [ | x1 xs1] => y; [ by case y | ].
+  case y => //= y1 ys1 H1.
+  have: x1 = y1 => [ | H2 ].
+    case_eq (x1 ?= y1) => H2;
+      rewrite H2 in H1 => //.
+    by rewrite compare_eq_iff in H2.
+  subst.
+  apply /f_equal /IHxs1.
+  by rewrite compare_refl in H1.
+- move => <-.
+  rewrite /time_eq.
+  suff: time_compare x x = Eq.
+    by move => ->.
+  rewrite /time_compare.
+  induction x => //.
+  rewrite IHx.
+  by rewrite compare_refl.
+Qed.
+
 (* 
 strはストリームの内部的な型を表す。
 どの論理的時刻にどの値を持って発火するのかを表す。
@@ -120,14 +148,23 @@ Definition chop_front a (cel : cel a) (t0 : time) :=
   (at_ cel t0, List.filter (fun ta => (fst ta) >=? t0) (snd cel)).
 
 Axiom axiom_false : False.
-Definition todo (a : Type) : a := False_rect _ axiom_false.
+Definition todo {a : Type} : a := False_rect _ axiom_false.
 
-Fixpoint coalesce a (f : a -> a -> a) (s : str a) : str a :=
+Require Import Recdef.
+
+Function coalesce a (f : a -> a -> a) (s : str a) {measure length s} : str a :=
   match s with
-  | ta1 :: ta2 :: tas => todo _
-  | ta1 :: tas => todo _
+  | (t1, a1) :: (t2, a2) :: tas => if t1 =? t2 then coalesce f ((t1, f a1 a2) :: tas) else (t1, a1) :: coalesce f ((t1,  a2) :: tas)
+  | ta1 :: tas => todo
   | [] => []
   end.
+Proof.
+move => a f s ta1 tas t1 a1 H1 p tas0 t2 a2 H2 H3 H4 H5.
+by [].
+
+move => a f s ta1 tas t1 a1 H1 p tas0 t2 a2 H2 H3 H4 H5.
+by [].
+Qed.
 
 Definition occs a (s : stream a): str a :=
   match s with
