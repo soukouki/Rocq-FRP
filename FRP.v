@@ -6,7 +6,7 @@ FRPの表示的意味論をCoqに移植した。
 Set Implicit Arguments.
 
 Require Import ssreflect.
-Require Import List Nat.
+Require Import List Nat Recdef.
 Import PeanoNat.Nat.
 Import ListNotations.
 
@@ -64,6 +64,7 @@ Module FRPNotations.
 
 Declare Scope frp_scope.
 
+Infix "?=" := time_compare (at level 70).
 Infix "=?" := time_eq (at level 70).
 Infix "<?" := time_lt (at level 70).
 Infix "<=?" := time_le (at level 70).
@@ -85,7 +86,7 @@ split.
   induction x as [ | x1 xs1] => y; [ by case y | ].
   case y => //= y1 ys1 H1.
   have: x1 = y1 => [ | H2 ].
-    case_eq (x1 ?= y1) => H2;
+    case_eq (x1 ?= y1)%nat => H2;
       rewrite H2 in H1 => //.
     by rewrite compare_eq_iff in H2.
   subst.
@@ -147,39 +148,148 @@ Definition at_ a (cel : cel a) (t : time) : a :=
 Definition chop_front a (cel : cel a) (t0 : time) :=
   (at_ cel t0, List.filter (fun ta => (fst ta) >=? t0) (snd cel)).
 
-Axiom axiom_false : False.
-Definition todo {a : Type} : a := False_rect _ axiom_false.
-
-Require Import Recdef.
-
 Function coalesce a (f : a -> a -> a) (s : str a) {measure length s} : str a :=
   match s with
-  | (t1, a1) :: (t2, a2) :: tas => if t1 =? t2 then coalesce f ((t1, f a1 a2) :: tas) else (t1, a1) :: coalesce f ((t1,  a2) :: tas)
-  | ta1 :: tas => todo
+  | (t1, a1) :: (t2, a2) :: tas =>
+    if t1 =? t2
+    then
+      coalesce f ((t1, f a1 a2) :: tas)
+    else
+      (t1, a1) :: coalesce f ((t1,  a2) :: tas)
+  | ta1 :: tas => ta1 :: coalesce f tas
   | [] => []
   end.
 Proof.
-move => a f s ta1 tas t1 a1 H1 p tas0 t2 a2 H2 H3 H4 H5.
-by [].
+- move => a f s ta1 tas t1 a1 H1 H2 H3.
+  by [].
+- move => a f s ta1 tas t1 a1 H1 p tas0 t2 a2 H2 H3 H4 H5.
+  by [].
+- move => a f s ta1 tas t1 a1 H1 p tas0 t2 a2 H2 H3 H4 H5.
+  by [].
+Qed.
 
-move => a f s ta1 tas t1 a1 H1 p tas0 t2 a2 H2 H3 H4 H5.
+Function occs_knit a (ab : (str a * str a)) {measure (fun (ab : str a * str a) => length (fst ab ++ snd ab)) ab} :=
+  match ab with
+  | (((ta, a) :: tas2) as tas1,  ((tb, b) :: tbs2) as tbs1) =>
+    if ta <=? tb
+    then
+      (ta, a) :: occs_knit (tas2, tbs1)
+    else
+      (tb, b) :: occs_knit (tas1, tbs2)
+  | (tas, tbs) => tas ++ tbs
+  end.
+Proof.
+- move => a ab tas tbs p tas2 ta a0 H1 H2 p0 tbs2 tb b H3 H4 H5 H6.
+  by [].
+- move => a ab tas tbs p tas2 ta a0 H1 H2 p0 tbs2 tb b H3 H4 H5 H6.
+  rewrite /=.
+  apply Lt.lt_n_S.
+  rewrite 2!app_length.
+  apply Plus.plus_lt_compat_l.
+  by [].
+Qed.
+
+Function steps_knit p a (f0 : p -> a) (p0 : p) (fps : (list (time * (p -> a)) * list (time * p)))
+  {measure (fun fps => length (fst fps) + length (snd fps)) fps}
+  : list (time * a) :=
+  match fps with
+  | (((ft1, f1) :: fs1) as fs, ((pt1, p1) :: ps1) as ps) =>
+    match ft1 ?= pt1 with
+    | Lt => steps_knit f1 p0 (fs1, ps)
+    | Gt => steps_knit f0 p1 (fs, ps1)
+    | Eq => steps_knit f1 p1 (fs1, ps1)
+    end
+  | ((ft1, f1) :: fs1, []) => steps_knit f1 p0 (fs1, [])
+  | ([], (pt1, p1) :: ps1) => steps_knit f0 p1 ([], ps1)
+  | ([], []) => []
+  end.
+Proof.
+- by move => p a f0 p0 fps fs ps H1 pt1p1 ps1 pt1 p1 H2 H3 H4.
+- by move => p a f0 p0 fps fs ps H1 pt1p1 ps1 pt1 p1 H2 H3 H4.
+- move => p a f0 p0 fps fs ps ft1f1 fs1 ft1 f1 H1 H2 pt1p1 ps1 pt1 p1 H3 H4 H5 H6.
+  rewrite /= add_succ_r.
+  by apply le_S.
+- by move => p a f0 p0 fps fs ps ft1f1 fs1 ft1 f1 H1 H2 pt1p1 ps1 pt1 p1 H3 H4 H5 H6.
+- move => p a f0 p0 fps fs ps ft1f1 fs1 ft1 f1 H1 H2 pt1p1 ps1 pt1 p1 H3 H4 H5 H6.
+  by rewrite /= add_succ_r.
+Qed.
+
+Axiom axiom_False : False.
+Definition TODO {a} := False_rect a axiom_False.
+
+Fixpoint occs a (s_ : stream a): str a :=
+  match s_ with
+  | mk_stream s => s
+  | never _ => []
+  | map_s f s => map (fun ta => (fst ta, f (snd ta))) (occs s)
+  | snapshot f s c => map (fun ta => (fst ta, f (snd ta) (at_ (steps c) (fst ta)))) (occs s)
+  | merge sa sb f => coalesce f (occs_knit (occs sa, occs sb))
+  | filter pred s => List.filter (fun ta => pred (snd ta)) (occs s)
+  | switch_s _ => TODO
+  | execute _ => TODO
+  | update c  => snd (steps c)
+  | value c t0 =>
+    let
+      cf := chop_front (steps c) t0
+    in
+      coalesce (fun x y => y) ((t0, fst cf) :: snd cf)
+  | split s => TODO
+  end
+with steps a (c_ : cell a) : cel a :=
+  match c_ with
+  | constant a => (a, [])
+  | hold a s t0 => (a, coalesce (fun x y => y) (List.filter (fun ta => fst ta >=? t0) (occs s)))
+  | map_c f c =>
+    let
+      stp := steps c
+    in
+      (f (fst stp), map (fun ta => (fst ta, f (snd ta))) (snd stp))
+  | apply cf cp =>
+    let
+      (f, fsts) := steps cf
+    in let
+      (p, psts) := steps cp
+    in
+      (f p, steps_knit f p (fsts, psts))
+  | switch_c _ _ => TODO
+  end.
+
+Theorem occs_map_never a b (f : a -> b) : occs (map_s f (never a)) = occs (never b).
+Proof.
 by [].
 Qed.
 
-Definition occs a (s : stream a): str a :=
-  match s with
-  | mk_stream s' => s'
-  | never _ => []
-  | map_s _ _ => []
-  | snapshot _ _ _ => []
-  | merge _ _ _ => []
-  | filter _ _ => []
-  | switch_s _ => []
-  | execute _ => []
-  | update _  => []
-  | value _ _ => []
-  | split _ => []
-  end.
+Theorem occs_merge_never_right a (f : a -> a -> a) (s : stream a) : occs (merge s (never a) f) = occs s.
+Proof.
+rewrite /=.
+rewrite occs_knit_equation.
+case (occs s).
+  by rewrite coalesce_equation.
+move => pt ps.
+case pt => pt1 p1.
+rewrite app_nil_r.
+move: pt1 p1.
+clear pt s.
+induction ps.
+  move => pt1 p1.
+  by rewrite 2!coalesce_equation.
+move => pt1 p1.
+rewrite coalesce_equation.
+case a0.
+move => pt2 p2.
+case_eq (pt1 =? pt2) => H1.
+- rewrite coalesce_equation.
+  case ps.
+    rewrite coalesce_equation.
+
+  case ps.
+    by rewrite coalesce_equation.
+  move => pt2p2 ps2.
+  case pt2p2.
+  move => pt2 p32.
+  case (pt1 =? pt2).
+  + rewrite coalesce_equation.
+
 
 End FRP.
 
