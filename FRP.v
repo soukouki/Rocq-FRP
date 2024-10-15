@@ -102,6 +102,14 @@ split.
   by rewrite compare_refl.
 Qed.
 
+Lemma time_lt_false (x : time) : (x <? x) = false.
+Proof.
+rewrite /time_lt.
+suff: x ?= x = Eq => [ -> // | ].
+induction x => //.
+by rewrite /= compare_refl.
+Qed.
+
 (* 
 strはストリームの発火する論理的時刻とその値をリストにしたものを持つ。
 元のコードではSとなっていたが、小文字にすると変数名とかぶりがちなのでstrとした。
@@ -147,14 +155,21 @@ Definition at_ a (cel : cel a) (t : time) : a :=
 Definition chop_front a (cel : cel a) (t0 : time) :=
   (at_ cel t0, List.filter (fun ta => (fst ta) >=? t0) (snd cel)).
 
+(* 
+coalesce :: (a -> a -> a) -> S a -> S a
+coalesce f ((t1, a1):(t2, a2):as) | t1 == t2 = coalesce f ((t1, f a1 a2):as)
+coalesce f (ta:as) = ta : coalesce f as
+coalesce f [] = []
+ *)
+
 Function coalesce a (f : a -> a -> a) (s : str a) {measure length s} : str a :=
   match s with
-  | (t1, a1) :: (t2, a2) :: tas =>
+  | (t1, a1) :: ((t2, a2) :: tas2) as tas1 =>
     if t1 =? t2
     then
-      coalesce f ((t1, f a1 a2) :: tas)
+      coalesce f ((t1, f a1 a2) :: tas2)
     else
-      (t1, a1) :: coalesce f ((t1,  a2) :: tas)
+      (t1, a1) :: coalesce f tas1
   | ta1 :: tas => ta1 :: coalesce f tas
   | [] => []
   end.
@@ -253,72 +268,93 @@ Proof.
 done.
 Qed.
 
-Definition nth_sig a (l : list a) (n : nat | n < length l) : a.
+Definition str_timing_is_asc_order a (s : str a) : Prop :=
+  forall n,
+    match nth_error s n, nth_error s (S n) with
+    | None, None => True
+    | Some ni, None => True
+    | None, Some mi => False
+    | Some ni, Some mi => fst ni <? fst mi = true
+    end.
+
+Lemma str_timing_is_asc_order_duplication a t (p1 p2 : a) ps :
+  ~ str_timing_is_asc_order ((t, p1) :: (t, p2) :: ps).
 Proof.
-case n => n' H1.
-case_eq (nth_error l n') => // H2.
-by apply (iffRL (nth_error_Some l n')) in H1.
+rewrite /str_timing_is_asc_order => H1.
+move: (H1 0) => H1'; clear H1.
+by rewrite /nth_error /fst time_lt_false in H1'.
 Qed.
 
-Definition nth_sig_nth_error a (l : list a) n (H1 : n < length l) : Some (nth_sig l (exist (fun n0 : nat => n0 < length l) n H1)) = nth_error l n.
+Lemma str_timing_is_asc_order_tail a t (p : a) ps :
+  str_timing_is_asc_order ((t, p) :: ps) -> str_timing_is_asc_order ps.
 Proof.
-case_eq (nth_error l n).
-- move => x _.
-  apply f_equal.
-  move: (exist (fun n0 : nat => n0 < length l) n H1) => H2.
-  
-- move => H2.
-  pose proof H1 as H1'.
-  by rewrite -nth_error_Some in H1'.
-
-Definition hog2 : {n : nat | n < length [1; 2; 3]}.
-Proof.
-by exists 2.
+move => H1.
+rewrite /str_timing_is_asc_order => n.
+by move: (H1 (S n)).
 Qed.
 
-Theorem hog3 : nth_sig [1; 2; 3] hog2 = 3.
+Lemma str_timing_is_asc_order_nil a:
+  str_timing_is_asc_order ([] : str a).
 Proof.
-rewrite /nth_sig.
+rewrite /str_timing_is_asc_order /= => n.
+suff: nth_error ([] : str a) n = None => [ -> // | ].
+by induction n.
+Qed.
 
-Definition str_timing_is_scratted a (s : str a) n m (H1 : n < length s) (H2 : m < length s) : Prop :=
-  nth_sig
-
-Theorem hoge : str_timing_is_scratted (occs (mk_stream [([1], 1); ([2], 2)])).
+Lemma coalesce_eq a f (ps : str a) :
+  str_timing_is_asc_order ps -> coalesce f ps = ps.
 Proof.
-rewrite /occs.
-rewrite /str_timing_is_scratted.
-move => n m H1 H2 H3.
-case n.
-- case m.
-  rewrite /nth_error.
-  
+induction ps.
+  by rewrite coalesce_equation.
+move => H1.
+rewrite coalesce_equation.
+move: H1.
+case_eq a0.
+move => pt1 p1 H2 H1.
+case_eq ps.
+  move => H3.
+  subst.
+  rewrite IHps => //.
+  by apply str_timing_is_asc_order_nil.
+move => pa ps2 H4.
+case_eq pa => pt2 p2 H5.
+subst.
+case_eq (pt1 =? pt2).
+- move => H4.
+  rewrite eqb_eq in H4.
+  subst.
+  by apply str_timing_is_asc_order_duplication in H1.
+- move => H4.
+  rewrite IHps => //.
+  by apply str_timing_is_asc_order_tail in H1.
+Qed.
 
-
-Theorem occs_merge_never_right a (f : a -> a -> a) (s : stream a) : occs (merge s (never a) f) = occs s.
+Theorem occs_merge_never_right a (f : a -> a -> a) (s : stream a) :
+  str_timing_is_asc_order (occs s) ->
+  occs (merge s (never a) f) = occs s.
 Proof.
 rewrite /=.
+move: (occs s) => occs_s H1.
 rewrite occs_knit_equation.
-case (occs s).
+case_eq (occs_s).
   by rewrite coalesce_equation.
-move => pt ps.
-case pt => pt1 p1.
+move => pt ps H2.
+subst.
+move: H1.
+case pt => pt1 p1 H1.
 rewrite app_nil_r.
-move: pt1 p1.
-clear pt s.
-induction ps.
-  move => pt1 p1.
-  by rewrite 2!coalesce_equation.
-move => pt1 p1.
-rewrite coalesce_equation.
-case_eq a0.
-move => pt2 p2 H1.
-case_eq (pt1 =? pt2).
-  move => H2.
-  rewrite eqb_eq in H2.
-  subst.
-  rewrite IHps.
-  
+by apply coalesce_eq.
+Qed.
 
+Theorem occs_merge_never_left a (f : a -> a -> a) (s : stream a) :
+  str_timing_is_asc_order (occs s) ->
+  occs (merge (never a) s f) = occs s.
+Proof.
+rewrite /=.
+move: (occs s) => occs_s H1.
+rewrite occs_knit_equation /=.
+by apply coalesce_eq.
+Qed.
 
 End FRP.
 
