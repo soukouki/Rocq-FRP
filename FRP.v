@@ -103,25 +103,24 @@ split.
 Qed.
 
 (* 
-strはストリームの内部的な型を表す。
-どの論理的時刻にどの値を持って発火するのかを表す。
+strはストリームの発火する論理的時刻とその値をリストにしたものを持つ。
 元のコードではSとなっていたが、小文字にすると変数名とかぶりがちなのでstrとした。
 
-cはセルの内部的な型を表す。
-初期値と、それがどの論理的時刻にどの値で更新されるかを表す。
-更新が発生しない論理的時刻のときは、何も表さない。
+celはセルの初期値と、発火する論理的時刻とその値をリストにしたものを持つ。
 元のコードではCとなっていたが、小文字にすると変数名とかぶりがちなのでcelとした。
 
-これらの型はlist型を使っているため、同じ論理的時刻に複数回発火したり、順番が異なるリストが生まれたりする。
-ここでは、1つの論理的時刻には0または1回のイベントしか発火せず、リスト内の要素は論理的時刻が昇順となるように並んでいるものとする。
+これらの型はlist型を使っているため、同じ論理的時刻に複数回発火したり、順番が異なるようなリストについて考えないといけないことがある。
+ここでは、1つの論理的時刻には0または1回のイベントしか発火せず、リスト内の要素は論理的時刻が昇順となるように並んでいるものと考えることにする。
  *)
 Definition str a := list (time * a).
 Definition cel a := (a * (list (time * a)%type))%type.
 
 (* 
+streamとcellはストリームとセルをそれぞれ表す。このstreamとcellは、プリミティブによって作られた、普通のストリームとセルである。
+
 #[bypass_check(positivity)]は、帰納型で矛盾を作る方法を阻止する為にあるエラーを無視する。
-これを使った証明は健全では無いかもしれない。
-しかし、streamとcellを元のHaskellのコードに似た形で作るには必須なため、ここでは受け入れることにする。
+このエラーはswitch_sとswitch_cの部分を除くと解決する。
+これを使った証明は健全では無いかもしれないが、streamとcellを元のHaskellのコードに似た形で作るには必須なため、ここでは受け入れることにする。
  *)
 #[bypass_check(positivity)] Inductive stream a :=
   | mk_stream : str a -> stream a
@@ -160,12 +159,9 @@ Function coalesce a (f : a -> a -> a) (s : str a) {measure length s} : str a :=
   | [] => []
   end.
 Proof.
-- move => a f s ta1 tas t1 a1 H1 H2 H3.
-  by [].
-- move => a f s ta1 tas t1 a1 H1 p tas0 t2 a2 H2 H3 H4 H5.
-  by [].
-- move => a f s ta1 tas t1 a1 H1 p tas0 t2 a2 H2 H3 H4 H5.
-  by [].
+- by move => a f s ta1 tas t1 a1 H1 H2 H3.
+- by move => a f s ta1 tas t1 a1 H1 p tas0 t2 a2 H2 H3 H4 H5.
+- by move => a f s ta1 tas t1 a1 H1 p tas0 t2 a2 H2 H3 H4 H5.
 Qed.
 
 Function occs_knit a (ab : (str a * str a)) {measure (fun (ab : str a * str a) => length (fst ab ++ snd ab)) ab} :=
@@ -179,14 +175,12 @@ Function occs_knit a (ab : (str a * str a)) {measure (fun (ab : str a * str a) =
   | (tas, tbs) => tas ++ tbs
   end.
 Proof.
-- move => a ab tas tbs p tas2 ta a0 H1 H2 p0 tbs2 tb b H3 H4 H5 H6.
-  by [].
+- by move => a ab tas tbs p tas2 ta a0 H1 H2 p0 tbs2 tb b H3 H4 H5 H6.
 - move => a ab tas tbs p tas2 ta a0 H1 H2 p0 tbs2 tb b H3 H4 H5 H6.
   rewrite /=.
   apply Lt.lt_n_S.
   rewrite 2!app_length.
-  apply Plus.plus_lt_compat_l.
-  by [].
+  by apply Plus.plus_lt_compat_l.
 Qed.
 
 Function steps_knit p a (f0 : p -> a) (p0 : p) (fps : (list (time * (p -> a)) * list (time * p)))
@@ -256,8 +250,49 @@ with steps a (c_ : cell a) : cel a :=
 
 Theorem occs_map_never a b (f : a -> b) : occs (map_s f (never a)) = occs (never b).
 Proof.
-by [].
+done.
 Qed.
+
+Definition nth_sig a (l : list a) (n : nat | n < length l) : a.
+Proof.
+case n => n' H1.
+case_eq (nth_error l n') => // H2.
+by apply (iffRL (nth_error_Some l n')) in H1.
+Qed.
+
+Definition nth_sig_nth_error a (l : list a) n (H1 : n < length l) : Some (nth_sig l (exist (fun n0 : nat => n0 < length l) n H1)) = nth_error l n.
+Proof.
+case_eq (nth_error l n).
+- move => x _.
+  apply f_equal.
+  move: (exist (fun n0 : nat => n0 < length l) n H1) => H2.
+  
+- move => H2.
+  pose proof H1 as H1'.
+  by rewrite -nth_error_Some in H1'.
+
+Definition hog2 : {n : nat | n < length [1; 2; 3]}.
+Proof.
+by exists 2.
+Qed.
+
+Theorem hog3 : nth_sig [1; 2; 3] hog2 = 3.
+Proof.
+rewrite /nth_sig.
+
+Definition str_timing_is_scratted a (s : str a) n m (H1 : n < length s) (H2 : m < length s) : Prop :=
+  nth_sig
+
+Theorem hoge : str_timing_is_scratted (occs (mk_stream [([1], 1); ([2], 2)])).
+Proof.
+rewrite /occs.
+rewrite /str_timing_is_scratted.
+move => n m H1 H2 H3.
+case n.
+- case m.
+  rewrite /nth_error.
+  
+
 
 Theorem occs_merge_never_right a (f : a -> a -> a) (s : stream a) : occs (merge s (never a) f) = occs s.
 Proof.
@@ -275,20 +310,14 @@ induction ps.
   by rewrite 2!coalesce_equation.
 move => pt1 p1.
 rewrite coalesce_equation.
-case a0.
-move => pt2 p2.
-case_eq (pt1 =? pt2) => H1.
-- rewrite coalesce_equation.
-  case ps.
-    rewrite coalesce_equation.
-
-  case ps.
-    by rewrite coalesce_equation.
-  move => pt2p2 ps2.
-  case pt2p2.
-  move => pt2 p32.
-  case (pt1 =? pt2).
-  + rewrite coalesce_equation.
+case_eq a0.
+move => pt2 p2 H1.
+case_eq (pt1 =? pt2).
+  move => H2.
+  rewrite eqb_eq in H2.
+  subst.
+  rewrite IHps.
+  
 
 
 End FRP.
