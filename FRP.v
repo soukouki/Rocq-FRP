@@ -193,9 +193,10 @@ Proof.
 - by move => a ab tas tbs p tas2 ta a0 H1 H2 p0 tbs2 tb b H3 H4 H5 H6.
 - move => a ab tas tbs p tas2 ta a0 H1 H2 p0 tbs2 tb b H3 H4 H5 H6.
   rewrite /=.
-  apply Lt.lt_n_S.
+  rewrite -succ_lt_mono.
   rewrite 2!app_length.
-  by apply Plus.plus_lt_compat_l.
+  Search (_ + _ < _ + _).
+  by apply add_lt_mono_l.
 Qed.
 
 Function steps_knit p a (f0 : p -> a) (p0 : p) (fps : (list (time * (p -> a)) * list (time * p)))
@@ -238,10 +239,8 @@ Fixpoint occs a (s_ : stream a): str a :=
   | execute _ => TODO
   | update c  => snd (steps c)
   | value c t0 =>
-    let
-      cf := chop_front (steps c) t0
-    in
-      coalesce (fun x y => y) ((t0, fst cf) :: snd cf)
+    let cf := chop_front (steps c) t0 in
+    coalesce (fun x y => y) ((t0, fst cf) :: snd cf)
   | split s => TODO
   end
 with steps a (c_ : cell a) : cel a :=
@@ -249,17 +248,12 @@ with steps a (c_ : cell a) : cel a :=
   | constant a => (a, [])
   | hold a s t0 => (a, coalesce (fun x y => y) (List.filter (fun ta => fst ta >=? t0) (occs s)))
   | map_c f c =>
-    let
-      stp := steps c
-    in
-      (f (fst stp), map (fun ta => (fst ta, f (snd ta))) (snd stp))
+    let stp := steps c in
+    (f (fst stp), map (fun ta => (fst ta, f (snd ta))) (snd stp))
   | apply cf cp =>
-    let
-      (f, fsts) := steps cf
-    in let
-      (p, psts) := steps cp
-    in
-      (f p, steps_knit f p (fsts, psts))
+    let (f, fsts) := steps cf in
+    let (p, psts) := steps cp in
+    (f p, steps_knit f p (fsts, psts))
   | switch_c _ _ => TODO
   end.
 
@@ -273,16 +267,16 @@ Definition str_timing_is_asc_order a (s : str a) : Prop :=
     match nth_error s n, nth_error s (S n) with
     | None, None => True
     | Some ni, None => True
-    | None, Some mi => False
-    | Some ni, Some mi => fst ni <? fst mi = true
+    | None, Some sni => False
+    | Some ni, Some sni => fst ni <? fst sni = true
     end.
 
 Lemma str_timing_is_asc_order_duplication a t (p1 p2 : a) ps :
   ~ str_timing_is_asc_order ((t, p1) :: (t, p2) :: ps).
 Proof.
 rewrite /str_timing_is_asc_order => H1.
-move: (H1 0) => H1'; clear H1.
-by rewrite /nth_error /fst time_lt_false in H1'.
+specialize (H1 0).
+by rewrite /nth_error /fst time_lt_false in H1.
 Qed.
 
 Lemma str_timing_is_asc_order_tail a t (p : a) ps :
@@ -290,7 +284,7 @@ Lemma str_timing_is_asc_order_tail a t (p : a) ps :
 Proof.
 move => H1.
 rewrite /str_timing_is_asc_order => n.
-by move: (H1 (S n)).
+by specialize (H1 (S n)).
 Qed.
 
 Lemma str_timing_is_asc_order_nil a:
@@ -355,6 +349,17 @@ move: (occs s) => occs_s H1.
 rewrite occs_knit_equation /=.
 by apply coalesce_eq.
 Qed.
+
+Definition option_is_some a (o : option a) : bool :=
+  match o with
+  | Some _ => true
+  | None => false
+  end.
+
+Definition test a (o : option a) : option a :=
+  if o then o else o.
+
+Search option bool.
 
 End FRP.
 
