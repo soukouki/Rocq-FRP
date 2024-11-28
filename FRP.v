@@ -10,7 +10,12 @@ Require Import List Nat Recdef.
 Import PeanoNat.Nat.
 Import ListNotations.
 
+Require Import Top.Classical.
+Import Classical.
+
 Module FRP.
+
+Create HintDb frp.
 
 (* 
 timeは1つの論理的時刻を表す。
@@ -64,16 +69,17 @@ Module FRPNotations.
 
 Declare Scope frp_scope.
 
-Infix "?=" := time_compare (at level 70).
-Infix "=?" := time_eq (at level 70).
-Infix "<?" := time_lt (at level 70).
-Infix "<=?" := time_le (at level 70).
-Infix ">?" := time_gt (at level 70).
-Infix ">=?" := time_ge (at level 70).
+Infix "?=" := time_compare (at level 70) : frp_scope.
+Infix "=?" := time_eq (at level 70) : frp_scope.
+Infix "<?" := time_lt (at level 70) : frp_scope.
+Infix "<=?" := time_le (at level 70) : frp_scope.
+Infix ">?" := time_gt (at level 70) : frp_scope.
+Infix ">=?" := time_ge (at level 70) : frp_scope.
 
 End FRPNotations.
 
 Import FRPNotations.
+Open Scope frp_scope.
 
 Lemma eqb_eq (x y : time) : x =? y = true <-> x = y.
 Proof.
@@ -101,6 +107,7 @@ split.
   rewrite IHx.
   by rewrite compare_refl.
 Qed.
+Hint Rewrite eqb_eq : frp.
 
 Lemma time_lt_false (x : time) : (x <? x) = false.
 Proof.
@@ -108,6 +115,18 @@ rewrite /time_lt.
 suff: x ?= x = Eq => [ -> // | ].
 induction x => //.
 by rewrite /= compare_refl.
+Qed.
+Hint Resolve time_lt_false : frp.
+
+(* autorewriteのテストとして、簡単な例を試す *)
+Theorem test_autorewrite (x y : time) : x =? y = true -> x = y.
+Proof.
+autorewrite with frp.
+done.
+Qed.
+Theorem test_autoapply (x : time) : (x <? x) = false.
+Proof.
+auto with frp.
 Qed.
 
 (* 
@@ -174,12 +193,12 @@ Function coalesce a (f : a -> a -> a) (s : str a) {measure length s} : str a :=
   | [] => []
   end.
 Proof.
-- by move => a f s ta1 tas t1 a1 H1 H2 H3.
-- by move => a f s ta1 tas t1 a1 H1 p tas0 t2 a2 H2 H3 H4 H5.
-- by move => a f s ta1 tas t1 a1 H1 p tas0 t2 a2 H2 H3 H4 H5.
+- by auto.
+- by auto.
+- by auto.
 Qed.
 
-Function occs_knit a (ab : (str a * str a)) {measure (fun (ab : str a * str a) => length (fst ab ++ snd ab)) ab} :=
+Function occs_knit a (ab : (str a * str a)) {measure (fun (ab : str a * str a) => length (fst ab) + length (snd ab)) ab} :=
   match ab with
   | (((ta, a) :: tas2) as tas1,  ((tb, b) :: tbs2) as tbs1) =>
     if ta <=? tb
@@ -190,12 +209,10 @@ Function occs_knit a (ab : (str a * str a)) {measure (fun (ab : str a * str a) =
   | (tas, tbs) => tas ++ tbs
   end.
 Proof.
-- by move => a ab tas tbs p tas2 ta a0 H1 H2 p0 tbs2 tb b H3 H4 H5 H6.
+- by auto.
 - move => a ab tas tbs p tas2 ta a0 H1 H2 p0 tbs2 tb b H3 H4 H5 H6.
   rewrite /=.
   rewrite -succ_lt_mono.
-  rewrite 2!app_length.
-  Search (_ + _ < _ + _).
   by apply add_lt_mono_l.
 Qed.
 
@@ -214,12 +231,12 @@ Function steps_knit p a (f0 : p -> a) (p0 : p) (fps : (list (time * (p -> a)) * 
   | ([], []) => []
   end.
 Proof.
-- by move => p a f0 p0 fps fs ps H1 pt1p1 ps1 pt1 p1 H2 H3 H4.
-- by move => p a f0 p0 fps fs ps H1 pt1p1 ps1 pt1 p1 H2 H3 H4.
+- by auto.
+- by auto.
 - move => p a f0 p0 fps fs ps ft1f1 fs1 ft1 f1 H1 H2 pt1p1 ps1 pt1 p1 H3 H4 H5 H6.
   rewrite /= add_succ_r.
   by apply le_S.
-- by move => p a f0 p0 fps fs ps ft1f1 fs1 ft1 f1 H1 H2 pt1p1 ps1 pt1 p1 H3 H4 H5 H6.
+- by auto.
 - move => p a f0 p0 fps fs ps ft1f1 fs1 ft1 f1 H1 H2 pt1p1 ps1 pt1 p1 H3 H4 H5 H6.
   by rewrite /= add_succ_r.
 Qed.
@@ -227,7 +244,42 @@ Qed.
 Axiom axiom_False : False.
 Definition TODO {a} := False_rect a axiom_False.
 
-Fixpoint occs a (s_ : stream a): str a :=
+(* 
+occs :: Stream a -> S a
+occs (MkStream s) = s
+occs Never = []
+occs (MapS f s) = map (\(t, a) -> (t, f a)) (occs s)
+occs (Snapshot f s c) = map (\(t, a) -> (t, f a (at stsb t))) (occs s)
+  where stsb = steps c
+occs (Merge sa sb f) = coalesce f (knit (occs sa) (occs sb))
+  where knit ((ta, a):as) bs@((tb, _):_) | ta <= tb = (ta, a) : knit as bs
+        knit as@((ta, _):_) ((tb, b):bs) = (tb, b) : knit as bs
+        knit as bs = as ++ bs
+occs (Filter pred s) = filter (\(t, a) -> pred a) (occs s)
+occs (SwitchS c) = scan Nothing a sts
+  where (a, sts) = steps c
+        scan mt0 a0 ((t1, a1):as) =
+            filter (\(t, a) -> maybe True (t >) mt0 && t <= t1) (occs a0)
+            ++ scan (Just t1) a1 as
+        scan mt0 a0 [] =
+            filter (\(t, a) -> maybe True (t >) mt0) (occs a0)
+occs (Execute s) = map (\(t, ma) -> (t, run ma t)) (occs s)
+occs (Updates c) = sts
+  where (_, sts) = steps c
+occs (Value c t0) = coalesce (flip const) ((t0, a) : sts)
+  where (a, sts) = chopFront (steps c) t0
+occs (Split s) = concatMap split (coalesce (++) (occs s))
+  where split (t, as) = zipWith (\n a -> (t++[n], a)) [0..] as
+ *)
+Definition maybe a b (vb : b) (f : a -> b) (opt : option a) : b :=
+  match opt with
+  | None => vb
+  | Some va => f va
+  end.
+
+Open Scope bool.
+
+Function occs a (s_ : stream a) : str a :=
   match s_ with
   | mk_stream s => s
   | never _ => []
@@ -235,13 +287,20 @@ Fixpoint occs a (s_ : stream a): str a :=
   | snapshot f s c => map (fun ta => (fst ta, f (snd ta) (at_ (steps c) (fst ta)))) (occs s)
   | merge sa sb f => coalesce f (occs_knit (occs sa, occs sb))
   | filter pred s => List.filter (fun ta => pred (snd ta)) (occs s)
-  | switch_s _ => TODO
+  | switch_s c =>
+    let (a0, sts) := (* steps c *) (TODO, []) in
+    occs_scan None a0 sts
   | execute _ => TODO
   | update c  => snd (steps c)
   | value c t0 =>
     let cf := chop_front (steps c) t0 in
     coalesce (fun x y => y) ((t0, fst cf) :: snd cf)
   | split s => TODO
+  end
+with occs_scan a (mt0 : option time) (a0 : stream a) (sts : str (stream a)) :=
+  match sts with
+  | (t1, a1) :: tas1 => List.filter (fun ta => maybe true (fun x => fst ta >? x) mt0 && (fst ta <=? t1)) (occs a0)
+  | nil => TODO
   end
 with steps a (c_ : cell a) : cel a :=
   match c_ with
@@ -339,6 +398,7 @@ case pt => pt1 p1 H1.
 rewrite app_nil_r.
 by apply coalesce_eq.
 Qed.
+Hint Rewrite occs_merge_never_right : frp.
 
 Theorem occs_merge_never_left a (f : a -> a -> a) (s : stream a) :
   str_timing_is_asc_order (occs s) ->
@@ -349,17 +409,72 @@ move: (occs s) => occs_s H1.
 rewrite occs_knit_equation /=.
 by apply coalesce_eq.
 Qed.
+Hint Rewrite occs_merge_never_left : frp.
 
-Definition option_is_some a (o : option a) : bool :=
-  match o with
-  | Some _ => true
+Definition is_some a (x : option a) :=
+  match x with
   | None => false
+  | Some _ => true
   end.
 
-Definition test a (o : option a) : option a :=
-  if o then o else o.
+Definition has_same_time (ta tb : list time) : bool :=
+  let find_tb := fun a => is_some (find (time_eq a) tb) in
+  is_some (find find_tb ta).
 
-Search option bool.
+Definition is_stream_fireing_at_a_time a b (sa : stream a) (sb : stream b) :=
+  let oa := map fst (occs sa) in
+  let ob := map fst (occs sb) in
+  has_same_time oa ob.
+
+Lemma occs_map_s_mk_stream a b (s : str a) (f : a -> b) : occs (map_s f (mk_stream s)) = map (fun ta => (fst ta, f (snd ta))) s.
+Proof.
+done.
+Qed.
+Hint Rewrite occs_map_s_mk_stream : frp.
+
+Definition test_frp_sPlusDelta (sPlus : stream unit) :=
+  map_s (fun _ => 1) sPlus.
+Variable test_frp_cValue1 : cell nat.
+Definition test_frp_sUpdate (sPlus : stream unit) :=
+  snapshot (fun i x => i + x) (test_frp_sPlusDelta sPlus) test_frp_cValue1.
+Definition test_frp_cValue2 (t0 : time) (sPlus : stream unit) :=
+  hold 0 (test_frp_sUpdate sPlus) t0.
+Axiom test_frp_cValue1_eq_test_frp_cValue2 :
+  forall t0 sPlus, test_frp_cValue1 = test_frp_cValue2 t0 sPlus.
+Definition test_frp_return (t0 : time) (sPlus : stream unit) :=
+  test_frp_cValue1.
+
+Theorem test_frp_sPlusDelta_and_test_frp_sUpdate_is_fireing_at_a_time :
+  exists sPlus, is_stream_fireing_at_a_time (test_frp_sPlusDelta sPlus) (test_frp_sUpdate sPlus) = true.
+Proof.
+exists (mk_stream [([1], tt)]).
+rewrite /is_stream_fireing_at_a_time.
+by autorewrite with frp.
+Qed.
+
+Variable test_frp_sStreamLoop : stream unit.
+Definition test_frp_sUpdate (sPlus : stream unit) :=
+  merge test_frp_sStreamLoop sPlus (fun x y => x).
+Axiom test_frp_sStreamLoop_eq_test_frp_sUpdate :
+  forall sPlus, test_frp_sStreamLoop = test_frp_sUpdate sPlus.
+Definition test_frp_return (t0 : time) (sPlus : stream unit) :=
+  hold 0 (map_s (fun u => 1) test_frp_sStreamLoop) t0.
+
+Theorem test_frp_streamLoop_correct : False.
+Proof.
+suff: exists sPlus, occs test_frp_sStreamLoop <> occs (test_frp_sUpdate sPlus).
+  move => H1.
+  rewrite exists_iff_not_forall_not in H1.
+  apply H1 => sStreamLoop.
+  apply.
+  by rewrite -test_frp_sStreamLoop_eq_test_frp_sUpdate.
+exists (mk_stream [([1], tt)]).
+rewrite /=.
+rewrite occs_knit_equation.
+
+
+
+
 
 End FRP.
 
