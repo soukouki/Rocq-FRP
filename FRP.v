@@ -142,6 +142,35 @@ celはセルの初期値と、発火する論理的時刻とその値をリス�
 Definition str a := list (time * a).
 Definition cel a := (a * (list (time * a)%type))%type.
 
+Fixpoint str_timing_is_asc_order a (s : str a) : bool :=
+  match s with
+  | nil => true
+  | (t1, a1) :: nil => true
+  | (t1, a1) :: ((t2, a2) :: _) as tas => (t1 <? t2) && str_timing_is_asc_order tas
+  end.
+
+Lemma str_timing_is_asc_order_duplication a t (p1 p2 : a) ps :
+  str_timing_is_asc_order ((t, p1) :: (t, p2) :: ps) = false.
+Proof.
+rewrite /=.
+rewrite Bool.andb_false_iff.
+left.
+by apply time_lt_false.
+Qed.
+
+Lemma str_timing_is_asc_order_tail a t (p : a) pts :
+  str_timing_is_asc_order ((t, p) :: pts) = true -> str_timing_is_asc_order pts = true.
+Proof.
+case pts => // pt1 pts1; clear pts.
+case pt1 => t1 p1; clear pt1.
+case pts1 => // pt2 pts2; clear pts1.
+case pt2 => t2 p2; clear pt2.
+move => H1.
+rewrite /= in H1.
+rewrite Bool.andb_true_iff in H1.
+by case H1.
+Qed.
+
 (* 
 streamとcellはストリームとセルをそれぞれ表す。このstreamとcellは、プリミティブによって作られた、普通のストリームとセルである。
 
@@ -149,8 +178,8 @@ streamとcellはストリームとセルをそれぞれ表す。このstreamとc
 このエラーはswitch_sとswitch_cの部分を除くと解決する。
 これを使った証明は健全では無いかもしれないが、streamとcellを元のHaskellのコードに似た形で作るには必須なため、ここでは受け入れることにする。
  *)
-#[bypass_check(positivity)] Inductive stream a :=
-  | mk_stream : str a -> stream a
+Inductive stream a :=
+  | mk_stream : { s : str a | str_timing_is_asc_order s = true } -> stream a
   | never : stream a
   | map_s prev : (prev -> a) -> stream prev -> stream a
   | snapshot prev_s prev_c : (prev_s -> prev_c -> a) -> stream prev_s -> cell prev_c -> stream a
@@ -161,7 +190,6 @@ streamとcellはストリームとセルをそれぞれ表す。このstreamとc
   | update : cell a -> stream a
   | value : cell a -> time -> stream a
   | split : stream (list a) -> stream a
-
 with cell a :=
   | constant : a -> cell a
   | hold : a -> stream a -> time -> cell a
@@ -175,13 +203,7 @@ Definition at_ a (cel : cel a) (t : time) : a :=
 Definition chop_front a (cel : cel a) (t0 : time) :=
   (at_ cel t0, List.filter (fun ta => (fst ta) >=? t0) (snd cel)).
 
-(* 
-coalesce :: (a -> a -> a) -> S a -> S a
-coalesce f ((t1, a1):(t2, a2):as) | t1 == t2 = coalesce f ((t1, f a1 a2):as)
-coalesce f (ta:as) = ta : coalesce f as
-coalesce f [] = []
- *)
-
+(* リストを前から見ていき、前2つが同じ時刻であれば、関数fでまとめたリストを返す *)
 Function coalesce a (f : a -> a -> a) (s : str a) {measure length s} : str a :=
   match s with
   | (t1, a1) :: ((t2, a2) :: tas2) as tas1 =>
@@ -265,7 +287,7 @@ Definition number_with a b (f : a -> nat -> b) (l : list a) : list b :=
 
 Fixpoint occs a (s_ : stream a) : str a :=
   match s_ with
-  | mk_stream s => s
+  | mk_stream s => proj1_sig s
   | never _ => []
   | map_s f s => map (fun ta => (fst ta, f (snd ta))) (occs s)
   | snapshot f s c => map (fun ta => (fst ta, f (snd ta) (at_ (steps c) (fst ta)))) (occs s)
@@ -300,41 +322,47 @@ Proof.
 done.
 Qed.
 
-Definition str_timing_is_asc_order a (s : str a) : Prop :=
-  forall n,
-    match nth_error s n, nth_error s (S n) with
-    | None, None => True
-    | Some ni, None => True
-    | None, Some sni => False
-    | Some ni, Some sni => fst ni <? fst sni = true
-    end.
-
-Lemma str_timing_is_asc_order_duplication a t (p1 p2 : a) ps :
-  ~ str_timing_is_asc_order ((t, p1) :: (t, p2) :: ps).
+Lemma str_timing_is_asc_order_map_s p a (f : p -> a) (s : stream p) :
+  str_timing_is_asc_order (occs s) = true -> str_timing_is_asc_order (occs (map_s f s)) = true.
 Proof.
-rewrite /str_timing_is_asc_order => H1.
-specialize (H1 0).
-by rewrite /nth_error /fst time_lt_false in H1.
-Qed.
+Admitted.
 
-Lemma str_timing_is_asc_order_tail a t (p : a) ps :
-  str_timing_is_asc_order ((t, p) :: ps) -> str_timing_is_asc_order ps.
+Lemma str_timing_is_asc_order_snapshot a prev_s prev_c (f : prev_s -> prev_c -> a) (s : stream prev_s) (c : cell prev_c) :
+  str_timing_is_asc_order (occs s) = true -> str_timing_is_asc_order (occs (snapshot f s c)) = true.
 Proof.
-move => H1.
-rewrite /str_timing_is_asc_order => n.
-by specialize (H1 (S n)).
-Qed.
+Admitted.
 
-Lemma str_timing_is_asc_order_nil a:
-  str_timing_is_asc_order ([] : str a).
+Lemma str_timing_is_asc_order_merge a (s1 s2 : stream a) (f : a -> a -> a) :
+  str_timing_is_asc_order (occs s1) = true ->
+  str_timing_is_asc_order (occs s2) = true ->
+  str_timing_is_asc_order (occs (merge s1 s2 f)) = true.
 Proof.
-rewrite /str_timing_is_asc_order /= => n.
-suff: nth_error ([] : str a) n = None => [ -> // | ].
-by induction n.
-Qed.
+Admitted.
+
+Lemma str_timing_is_asc_order_filter a (f : a -> bool) (s : stream a) :
+  str_timing_is_asc_order (occs s) = true -> str_timing_is_asc_order (occs (filter f s)) = true.
+Proof.
+Admitted.
+
+Theorem str_timing_is_asc_order_occs a (s : stream a) :
+  str_timing_is_asc_order (occs s) = true.
+Proof.
+induction s.
+- rewrite /=.
+  by apply (proj2_sig s).
+- trivial.
+- by apply str_timing_is_asc_order_map_s.
+- by apply str_timing_is_asc_order_snapshot.
+- by apply str_timing_is_asc_order_merge.
+- by apply str_timing_is_asc_order_filter.
+- 
+
+
+
+Admitted.
 
 Lemma coalesce_eq a f (ps : str a) :
-  str_timing_is_asc_order ps -> coalesce f ps = ps.
+  str_timing_is_asc_order ps = true -> coalesce f ps = ps.
 Proof.
 induction ps.
   by rewrite coalesce_equation.
@@ -346,8 +374,7 @@ move => pt1 p1 H2 H1.
 case_eq ps.
   move => H3.
   subst.
-  rewrite IHps => //.
-  by apply str_timing_is_asc_order_nil.
+  by rewrite IHps.
 move => pa ps2 H4.
 case_eq pa => pt2 p2 H5.
 subst.
@@ -355,14 +382,14 @@ case_eq (pt1 =? pt2).
 - move => H4.
   rewrite eqb_eq in H4.
   subst.
-  by apply str_timing_is_asc_order_duplication in H1.
+  by rewrite str_timing_is_asc_order_duplication in H1.
 - move => H4.
   rewrite IHps => //.
   by apply str_timing_is_asc_order_tail in H1.
 Qed.
 
 Theorem occs_merge_never_right a (f : a -> a -> a) (s : stream a) :
-  str_timing_is_asc_order (occs s) ->
+  str_timing_is_asc_order (occs s) = true ->
   occs (merge s (never a) f) = occs s.
 Proof.
 rewrite /=.
@@ -380,7 +407,7 @@ Qed.
 Hint Rewrite occs_merge_never_right : frp.
 
 Theorem occs_merge_never_left a (f : a -> a -> a) (s : stream a) :
-  str_timing_is_asc_order (occs s) ->
+  str_timing_is_asc_order (occs s) = true ->
   occs (merge (never a) s f) = occs s.
 Proof.
 rewrite /=.
@@ -405,7 +432,8 @@ Definition is_stream_fireing_at_a_time a b (sa : stream a) (sb : stream b) :=
   let ob := map fst (occs sb) in
   has_same_time oa ob.
 
-Lemma occs_map_s_mk_stream a b (s : str a) (f : a -> b) : occs (map_s f (mk_stream s)) = map (fun ta => (fst ta, f (snd ta))) s.
+Lemma occs_map_s_mk_stream a b (s : { s : str a | str_timing_is_asc_order s = true }) (f : a -> b) :
+  occs (map_s f (mk_stream s)) = map (fun ta => (fst ta, f (snd ta))) (proj1_sig s).
 Proof.
 done.
 Qed.
@@ -426,7 +454,11 @@ Definition test_frp_return (t0 : time) (sPlus : stream unit) :=
 Theorem test_frp_sPlusDelta_and_test_frp_sUpdate_is_fireing_at_a_time :
   exists sPlus, is_stream_fireing_at_a_time (test_frp_sPlusDelta sPlus) (test_frp_sUpdate sPlus) = true.
 Proof.
-exists (mk_stream [([1], tt)]).
+have : { s : str unit | str_timing_is_asc_order s = true }.
+  exists [([1], tt)].
+  by [].
+move => s.
+exists (mk_stream s).
 rewrite /is_stream_fireing_at_a_time.
 by autorewrite with frp.
 Qed.
