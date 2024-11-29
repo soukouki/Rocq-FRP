@@ -156,17 +156,18 @@ streamとcellはストリームとセルをそれぞれ表す。このstreamとc
   | snapshot prev_s prev_c : (prev_s -> prev_c -> a) -> stream prev_s -> cell prev_c -> stream a
   | merge : stream a -> stream a -> (a -> a -> a) -> stream a
   | filter : (a -> bool) -> stream a -> stream a
-  | switch_s : cell (stream a) -> stream a
+  (* | switch_s : cell (stream a) -> stream a *)
   | execute : stream (time -> a) -> stream a
   | update : cell a -> stream a
   | value : cell a -> time -> stream a
   | split : stream (list a) -> stream a
+
 with cell a :=
   | constant : a -> cell a
   | hold : a -> stream a -> time -> cell a
   | map_c prev : (prev -> a) -> cell prev -> cell a
   | apply prev : cell (prev -> a) -> cell prev -> cell a
-  | switch_c : cell (cell a) -> time -> cell a.
+  (* | switch_c : cell (cell a) -> time -> cell a *).
 
 Definition at_ a (cel : cel a) (t : time) : a :=
   last (map snd (List.filter (fun ta => (fst ta) <? t) (snd cel))) (fst cel).
@@ -244,42 +245,25 @@ Qed.
 Axiom axiom_False : False.
 Definition TODO {a} := False_rect a axiom_False.
 
-(* 
-occs :: Stream a -> S a
-occs (MkStream s) = s
-occs Never = []
-occs (MapS f s) = map (\(t, a) -> (t, f a)) (occs s)
-occs (Snapshot f s c) = map (\(t, a) -> (t, f a (at stsb t))) (occs s)
-  where stsb = steps c
-occs (Merge sa sb f) = coalesce f (knit (occs sa) (occs sb))
-  where knit ((ta, a):as) bs@((tb, _):_) | ta <= tb = (ta, a) : knit as bs
-        knit as@((ta, _):_) ((tb, b):bs) = (tb, b) : knit as bs
-        knit as bs = as ++ bs
-occs (Filter pred s) = filter (\(t, a) -> pred a) (occs s)
-occs (SwitchS c) = scan Nothing a sts
-  where (a, sts) = steps c
-        scan mt0 a0 ((t1, a1):as) =
-            filter (\(t, a) -> maybe True (t >) mt0 && t <= t1) (occs a0)
-            ++ scan (Just t1) a1 as
-        scan mt0 a0 [] =
-            filter (\(t, a) -> maybe True (t >) mt0) (occs a0)
-occs (Execute s) = map (\(t, ma) -> (t, run ma t)) (occs s)
-occs (Updates c) = sts
-  where (_, sts) = steps c
-occs (Value c t0) = coalesce (flip const) ((t0, a) : sts)
-  where (a, sts) = chopFront (steps c) t0
-occs (Split s) = concatMap split (coalesce (++) (occs s))
-  where split (t, as) = zipWith (\n a -> (t++[n], a)) [0..] as
- *)
 Definition maybe a b (vb : b) (f : a -> b) (opt : option a) : b :=
   match opt with
   | None => vb
   | Some va => f va
   end.
 
-Open Scope bool.
+Definition concat_map a b (f : a -> list b) (l : list a) : list b :=
+  concat (map f l).
 
-Function occs a (s_ : stream a) : str a :=
+Fixpoint number_with_i a b (f : a -> nat -> b) (l : list a) (n : nat) : list b :=
+  match l with
+  | nil => []
+  | a1 :: l1 => f a1 n :: number_with_i f l1 (S n)
+  end.
+
+Definition number_with a b (f : a -> nat -> b) (l : list a) : list b :=
+  number_with_i f l 0.
+
+Fixpoint occs a (s_ : stream a) : str a :=
   match s_ with
   | mk_stream s => s
   | never _ => []
@@ -287,20 +271,16 @@ Function occs a (s_ : stream a) : str a :=
   | snapshot f s c => map (fun ta => (fst ta, f (snd ta) (at_ (steps c) (fst ta)))) (occs s)
   | merge sa sb f => coalesce f (occs_knit (occs sa, occs sb))
   | filter pred s => List.filter (fun ta => pred (snd ta)) (occs s)
-  | switch_s c =>
-    let (a0, sts) := (* steps c *) (TODO, []) in
-    occs_scan None a0 sts
-  | execute _ => TODO
+  | execute s => map (fun tma => (fst tma, (snd tma) (fst tma))) (occs s)
   | update c  => snd (steps c)
   | value c t0 =>
     let cf := chop_front (steps c) t0 in
     coalesce (fun x y => y) ((t0, fst cf) :: snd cf)
-  | split s => TODO
-  end
-with occs_scan a (mt0 : option time) (a0 : stream a) (sts : str (stream a)) :=
-  match sts with
-  | (t1, a1) :: tas1 => List.filter (fun ta => maybe true (fun x => fst ta >? x) mt0 && (fst ta <=? t1)) (occs a0)
-  | nil => TODO
+  | split s =>
+    let spl := fun tas : (time * list a) =>
+      let (t1, as1) := tas in
+      number_with (fun a n => (t1 ++ [n], a)) as1 in
+    concat (map spl (coalesce (fun x y => x ++ y) (occs s)))
   end
 with steps a (c_ : cell a) : cel a :=
   match c_ with
@@ -313,7 +293,6 @@ with steps a (c_ : cell a) : cel a :=
     let (f, fsts) := steps cf in
     let (p, psts) := steps cp in
     (f p, steps_knit f p (fsts, psts))
-  | switch_c _ _ => TODO
   end.
 
 Theorem occs_map_never a b (f : a -> b) : occs (map_s f (never a)) = occs (never b).
