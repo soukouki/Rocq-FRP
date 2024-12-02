@@ -325,7 +325,27 @@ Qed.
 Lemma str_timing_is_asc_order_map_s p a (f : p -> a) (s : stream p) :
   str_timing_is_asc_order (occs s) = true -> str_timing_is_asc_order (occs (map_s f s)) = true.
 Proof.
-Admitted.
+rewrite /=.
+remember (occs s) as s1.
+clear Heqs1 => H1.
+induction s1 as [ | pt1 pts1 IH ] => //=.
+rewrite IH; clear IH.
+- move: H1.
+  case pt1 => t1 p1 => H1.
+  by apply str_timing_is_asc_order_tail in H1.
+- case_eq pts1 => //.
+  move => pt2 pts2 H2.
+  rewrite /=.
+  rewrite Bool.andb_true_iff.
+  split => //.
+  subst.
+  move: H1.
+  case pt1 => t1 p1.
+  case pt2 => t2 p2.
+  rewrite /= => H1.
+  rewrite Bool.andb_true_iff in H1.
+  by case H1.
+Qed.
 
 Lemma str_timing_is_asc_order_snapshot a prev_s prev_c (f : prev_s -> prev_c -> a) (s : stream prev_s) (c : cell prev_c) :
   str_timing_is_asc_order (occs s) = true -> str_timing_is_asc_order (occs (snapshot f s c)) = true.
@@ -344,6 +364,26 @@ Lemma str_timing_is_asc_order_filter a (f : a -> bool) (s : stream a) :
 Proof.
 Admitted.
 
+Lemma str_timing_is_asc_order_execute a (s : stream (time -> a)) :
+  str_timing_is_asc_order (occs s) = true -> str_timing_is_asc_order (occs (execute s)) = true.
+Proof.
+Admitted.
+
+Lemma str_timing_is_asc_order_update a (c : cell a) :
+  str_timing_is_asc_order (occs (update c)) = true.
+Proof.
+Admitted.
+
+Lemma str_timing_is_asc_order_value a (c : cell a) (t0 : time) :
+  str_timing_is_asc_order (occs (value c t0)) = true.
+Proof.
+Admitted.
+
+Lemma str_timing_is_asc_order_split a (s : stream (list a)) :
+  str_timing_is_asc_order (occs s) = true -> str_timing_is_asc_order (occs (split s)) = true.
+Proof.
+Admitted.
+
 Theorem str_timing_is_asc_order_occs a (s : stream a) :
   str_timing_is_asc_order (occs s) = true.
 Proof.
@@ -355,11 +395,11 @@ induction s.
 - by apply str_timing_is_asc_order_snapshot.
 - by apply str_timing_is_asc_order_merge.
 - by apply str_timing_is_asc_order_filter.
-- 
-
-
-
-Admitted.
+- by apply str_timing_is_asc_order_execute.
+- by apply str_timing_is_asc_order_update.
+- by apply str_timing_is_asc_order_value.
+- by apply str_timing_is_asc_order_split.
+Qed.
 
 Lemma coalesce_eq a f (ps : str a) :
   str_timing_is_asc_order ps = true -> coalesce f ps = ps.
@@ -452,7 +492,7 @@ Definition test_frp_return (t0 : time) (sPlus : stream unit) :=
   test_frp_cValue1.
 
 Theorem test_frp_sPlusDelta_and_test_frp_sUpdate_is_fireing_at_a_time :
-  exists sPlus, is_stream_fireing_at_a_time (test_frp_sPlusDelta sPlus) (test_frp_sUpdate sPlus) = true.
+  forall sPlus, is_stream_fireing_at_a_time (test_frp_sPlusDelta sPlus) (test_frp_sUpdate sPlus) = true.
 Proof.
 have : { s : str unit | str_timing_is_asc_order s = true }.
   exists [([1], tt)].
