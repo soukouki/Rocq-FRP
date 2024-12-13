@@ -81,7 +81,7 @@ End FRPNotations.
 Import FRPNotations.
 Open Scope frp_scope.
 
-Lemma eqb_eq (x y : time) : x =? y = true <-> x = y.
+Lemma time_eq_eq (x y : time) : x =? y = true <-> x = y.
 Proof.
 split.
 - rewrite /time_eq.
@@ -140,7 +140,7 @@ Qed.
 
 Lemma time_eq_true (x : time) : x =? x = true.
 Proof.
-by rewrite eqb_eq.
+by rewrite time_eq_eq.
 Qed.
 
 Lemma time_lt_false (x : time) : (x <? x) = false.
@@ -200,7 +200,7 @@ Proof.
 split.
 - case => H1 H2.
   case_eq (x ?= y).
-  + by rewrite time_compare_eq eqb_eq.
+  + by rewrite time_compare_eq time_eq_eq.
   + by rewrite time_compare_lt H1.
   + rewrite time_compare_gt.
     by rewrite time_gt_not_le H2.
@@ -215,7 +215,7 @@ Proof.
 split.
 - case => H1 H2.
   case_eq (x ?= y).
-  + by rewrite time_compare_eq eqb_eq.
+  + by rewrite time_compare_eq time_eq_eq.
   + rewrite time_compare_lt.
     by rewrite time_lt_not_ge H2.
   + by rewrite time_compare_gt H1.
@@ -224,6 +224,79 @@ split.
   + by rewrite time_gt_false.
   + by rewrite time_ge_true.
 Qed.
+
+Lemma time_lt_not_eq (x y : time) : x <? y = true -> x =? y = false.
+Proof.
+move => H1.
+rewrite /time_eq.
+rewrite -time_compare_lt in H1.
+by rewrite H1.
+Qed.
+
+Lemma time_gt_not_eq (x y : time) : x >? y = true -> x =? y = false.
+Proof.
+move => H1.
+rewrite /time_eq.
+rewrite -time_compare_gt in H1.
+by rewrite H1.
+Qed.
+
+Lemma time_eq_sym (x y : time) : (x =? y) = (y =? x).
+Proof.
+have : forall a b, a =? b = true -> b =? a = true => [ a b H1 | H1 ].
+  rewrite time_eq_eq.
+  by rewrite time_eq_eq in H1.
+case_eq (x =? y) => H2; symmetry.
+- by apply H1.
+- Search time_eq false.
+  Search false not.
+  rewrite -Bool.not_true_iff_false => H3.
+  rewrite -Bool.not_true_iff_false in H2.
+  apply H2.
+  by apply H1.
+Qed.
+
+Lemma time_lt_gt (x y : time) : (x <? y) = (y >? x).
+Proof.
+case_eq (x ?= y) => H2.
+- rewrite /time_lt.
+  rewrite H2.
+  rewrite /time_gt.
+  rewrite time_compare_eq in H2.
+  rewrite time_eq_sym in H2.
+  rewrite -time_compare_eq in H2.
+  by rewrite H2.
+- rewrite /time_lt.
+  rewrite H2; symmetry.
+  induction x.
+
+
+  rewrite /time_lt.
+  by rewrite H2.
+- rewrite /time_lt.
+  rewrite H2; symmetry.
+  
+
+
+
+
+- rewrite /time_lt.
+  rewrite H2; symmetry.
+  rewrite -Bool.not_true_iff_false => H3.
+  
+  
+  rewrite time_compare_eq in H2.
+  rewrite time_eq_eq in H2.
+  symmetry in H2.
+  rewrite
+
+
+case_eq (x <? y) => H2; symmetry.
+- by apply H1.
+- Search time_lt false.
+  
+
+
 
 (* 
 strはストリームの発火する論理的時刻とその値をリストにしたものを持つ。
@@ -344,7 +417,7 @@ case s.
   + exfalso.
     apply str_timing_is_asc_order_first_gt in H2.
     rewrite /= in H2.
-    rewrite eqb_eq in H3.
+    rewrite time_eq_eq in H3.
     subst.
     by rewrite time_lt_false in H2.
   + rewrite H1 => //.
@@ -490,6 +563,16 @@ rewrite IH; clear IH.
   by apply str_timing_is_asc_order_first_gt in H1.
 Qed.
 
+Lemma coalesce_le a (f : a -> a -> a) t1 a1 t2 a2 tas :
+  t1 <? t2 = true ->
+  coalesce f ((t1, a1) :: (t2, a2) :: tas) = (t1, a1) :: coalesce f ((t2, a2) :: tas).
+Proof.
+move => H1.
+rewrite {1}coalesce_equation.
+apply time_lt_not_eq in H1.
+by rewrite H1.
+Qed.
+
 Lemma str_timing_is_asc_order_merge a (s1 s2 : stream a) (f : a -> a -> a) :
   str_timing_is_asc_order (occs s1) = true ->
   str_timing_is_asc_order (occs s2) = true ->
@@ -590,7 +673,7 @@ induction tas0 as [ | ta1 tas1 IHa ].
     move => [ta1 a1] [tb1 b1] H1 H2 IHa IHb.
     rewrite occs_knit_equation.
     case_eq (ta1 ?= tb1).
-    * rewrite time_compare_eq eqb_eq => Heq.
+    * rewrite time_compare_eq time_eq_eq => Heq.
       apply Logic.eq_sym in Heq; subst.
       rewrite time_le_true.
       move : IHa.
@@ -627,7 +710,26 @@ induction tas0 as [ | ta1 tas1 IHa ].
     move => H2'.
     specialize (IHb H2').
     clear H1' H2'.
-    
+    move : ta1 tb1 H1 H2 IHa IHb.
+    case => at1 a1.
+    case => bt1 b1.
+    move => H1 H2 IHa IHb.
+    rewrite occs_knit_equation.
+    case_eq (at1 ?= bt1) => H3.
+    * rewrite time_compare_eq time_eq_eq in H3.
+      subst.
+      rewrite time_le_true.
+      clear IHb.
+      have : occs_knit (tas1, (bt1, b1) :: tbs1) = (bt1, b1) :: occs_knit (tas1, tbs1).
+        clear IHa; move : tas1 H1 H2.
+        case => [ H1 H2 | [at2 a2] tas2 H1 H2 ].
+          by rewrite 2!occs_knit_equation.
+        rewrite occs_knit_equation.
+        have : at2 <=? bt1 = false.
+          apply str_timing_is_asc_order_first_gt in H1; rewrite /fst in H1.
+          rewrite -time_gt_not_le.
+          Search time_lt time_gt.
+
 
 Admitted.
 
@@ -717,7 +819,7 @@ case_eq pa => pt2 p2 H5.
 subst.
 case_eq (pt1 =? pt2).
 - move => H4.
-  rewrite eqb_eq in H4.
+  rewrite time_eq_eq in H4.
   subst.
   by rewrite str_timing_is_asc_order_duplication in H1.
 - move => H4.
