@@ -98,10 +98,10 @@ split.
   subst.
   apply /f_equal /IHxs1.
   by rewrite compare_refl in H1.
-- move => <-.
+- move=> <-.
   rewrite /time_eq.
   suff: time_compare x x = Eq.
-    by move => ->.
+    by move=> ->.
   rewrite /time_compare.
   induction x => //.
   rewrite IHx.
@@ -111,7 +111,7 @@ Qed.
 Lemma time_compare_lt (x y : time) : x ?= y = Lt <-> x <? y = true.
 Proof.
 split.
-- move => H1.
+- move=> H1.
   rewrite /time_lt.
   by rewrite H1.
 - rewrite /time_lt.
@@ -121,7 +121,7 @@ Qed.
 Lemma time_compare_eq (x y : time) : x ?= y = Eq <-> x =? y = true.
 Proof.
 split.
-- move => H1.
+- move=> H1.
   rewrite /time_eq.
   by rewrite H1.
 - rewrite /time_eq.
@@ -131,7 +131,7 @@ Qed.
 Lemma time_compare_gt (x y : time) : x ?= y = Gt <-> x >? y = true.
 Proof.
 split.
-- move => H1.
+- move=> H1.
   rewrite /time_gt.
   by rewrite H1.
 - rewrite /time_gt.
@@ -204,7 +204,7 @@ split.
   + by rewrite time_compare_lt H1.
   + rewrite time_compare_gt.
     by rewrite time_gt_not_le H2.
-- move => <-.
+- move=> <-.
   split.
   + by rewrite time_lt_false.
   + by rewrite time_le_true.
@@ -213,13 +213,13 @@ Qed.
 Lemma time_gt_ge_eq (x y : time) : x >? y = false /\ x >=? y = true <-> x = y.
 Proof.
 split.
-- case => H1 H2.
+- case=> H1 H2.
   case_eq (x ?= y).
   + by rewrite time_compare_eq time_eq_eq.
   + rewrite time_compare_lt.
     by rewrite time_lt_not_ge H2.
   + by rewrite time_compare_gt H1.
-- move => <-.
+- move=> <-.
   split.
   + by rewrite time_gt_false.
   + by rewrite time_ge_true.
@@ -243,7 +243,7 @@ Qed.
 
 Lemma time_eq_sym (x y : time) : (x =? y) = (y =? x).
 Proof.
-have : forall a b, a =? b = true -> b =? a = true => [ a b H1 | H1 ].
+have: forall a b, a =? b = true -> b =? a = true => [ a b H1 | H1 ].
   rewrite time_eq_eq.
   by rewrite time_eq_eq in H1.
 case_eq (x =? y) => H2; symmetry.
@@ -256,51 +256,64 @@ case_eq (x =? y) => H2; symmetry.
   by apply H1.
 Qed.
 
+Lemma time_gt_transitive (x y z : time) : x >? y = true -> y >? z = true -> x >? z = true.
+Proof.
+move=> H1 H2.
+rewrite /time_lt.
+
+Admitted.
+
 Lemma time_lt_gt (x y : time) : (x <? y) = (y >? x).
 Proof.
-case_eq (x ?= y) => H2.
+case_eq (x ?= y) => H1.
 - rewrite /time_lt.
-  rewrite H2.
+  rewrite H1.
   rewrite /time_gt.
-  rewrite time_compare_eq in H2.
-  rewrite time_eq_sym in H2.
-  rewrite -time_compare_eq in H2.
-  by rewrite H2.
+  rewrite time_compare_eq in H1.
+  rewrite time_eq_sym in H1.
+  rewrite -time_compare_eq in H1.
+  by rewrite H1.
 - rewrite /time_lt.
-  rewrite H2; symmetry.
-  induction x.
-
-
-  rewrite /time_lt.
-  by rewrite H2.
+  rewrite H1; symmetry.
+  move: y H1.
+  induction x as [ | x1 xs1 ] => [ [ ] // | ].
+  case=> // y1 ys1 H1.
+  rewrite /time_gt.
+  suff: y1 :: ys1 ?= x1 :: xs1 = Gt.
+    by move=> ->.
+  rewrite /=.
+  case_eq (y1 ?= x1)%nat => // H2.
+  + suff: ys1 >? xs1 = true.
+      rewrite /time_gt.
+      by case (ys1 ?= xs1).
+    apply IHxs1.
+    rewrite compare_eq_iff eq_sym_iff -compare_eq_iff in H2.
+    by rewrite /= H2 in H1.
+  + rewrite /= in H1.
+    rewrite compare_lt_iff in H2.
+    have: x1 > y1 => // H2'.
+    rewrite Compare_dec.nat_compare_gt in H2'.
+    by rewrite H2' in H1.
 - rewrite /time_lt.
-  rewrite H2; symmetry.
-  
-
-
-
-
-- rewrite /time_lt.
-  rewrite H2; symmetry.
-  rewrite -Bool.not_true_iff_false => H3.
-  
-  
-  rewrite time_compare_eq in H2.
-  rewrite time_eq_eq in H2.
-  symmetry in H2.
-  rewrite
-
-
-case_eq (x <? y) => H2; symmetry.
-- by apply H1.
-- Search time_lt false.
-  
-
-
+  rewrite H1; symmetry.
+  move: y H1.
+  induction x as [ | x1 xs1 ] => [ [ ] // | ]. (* これinduction使ってるけど意味ない *)
+  case=> // y1 ys1 H1.
+  rewrite /time_gt.
+  case_eq (y1 :: ys1 ?= x1 :: xs1) => // H2.
+  exfalso.
+  have: x1 :: xs1 >? x1 :: xs1 = true => [ | H3 ].
+    by apply (time_gt_transitive _ (y1 :: ys1)); rewrite -time_compare_gt.
+  have: x1 :: xs1 ?= x1 :: xs1 = Eq => [ | H4 ].
+    rewrite time_compare_eq.
+    by rewrite time_eq_eq.
+  rewrite -time_compare_gt in H3.
+  by rewrite H3 in H4.
+Qed.
 
 (* 
 strはストリームの発火する論理的時刻とその値をリストにしたものを持つ。
-元のコードではSとなっていたが、小文字にすると変数名とかぶりがちなのでstrとした。
+元のコードではSとなっていたが、  小文字にすると変数名とかぶりがちなのでstrとした。
 
 celはセルの初期値と、発火する論理的時刻とその値をリストにしたものを持つ。
 元のコードではCとなっていたが、小文字にすると変数名とかぶりがちなのでcelとした。
