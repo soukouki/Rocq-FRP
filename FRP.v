@@ -89,7 +89,7 @@ split.
     case_eq (time_compare x y) => // H2 _.
     by apply H1.
   move: y.
-  induction x as [ | x1 xs1] => y; [ by case y | ].
+  induction x as [ | x1 xs1 ] => y; [ by case y | ].
   case y => //= y1 ys1 H1.
   have: x1 = y1 => [ | H2 ].
     case_eq (x1 ?= y1)%nat => H2;
@@ -256,13 +256,6 @@ case_eq (x =? y) => H2; symmetry.
   by apply H1.
 Qed.
 
-Lemma time_gt_transitive (x y z : time) : x >? y = true -> y >? z = true -> x >? z = true.
-Proof.
-move=> H1 H2.
-rewrite /time_lt.
-
-Admitted.
-
 Lemma time_lt_gt (x y : time) : (x <? y) = (y >? x).
 Proof.
 case_eq (x ?= y) => H1.
@@ -294,21 +287,34 @@ case_eq (x ?= y) => H1.
     have: x1 > y1 => // H2'.
     rewrite Compare_dec.nat_compare_gt in H2'.
     by rewrite H2' in H1.
+- rewrite time_compare_gt in H1.
+  have: x <? y = false => [ | H2 ].
+    
+  have: y >? x = false => [ | H3 ].
+    admit.
+  by rewrite H2 H3.
+
+
+
 - rewrite /time_lt.
   rewrite H1; symmetry.
   move: y H1.
-  induction x as [ | x1 xs1 ] => [ [ ] // | ]. (* これinduction使ってるけど意味ない *)
+  induction x as [ | x1 xs1 ] => [ [ ] // | ].
   case=> // y1 ys1 H1.
-  rewrite /time_gt.
-  case_eq (y1 :: ys1 ?= x1 :: xs1) => // H2.
-  exfalso.
-  have: x1 :: xs1 >? x1 :: xs1 = true => [ | H3 ].
-    by apply (time_gt_transitive _ (y1 :: ys1)); rewrite -time_compare_gt.
-  have: x1 :: xs1 ?= x1 :: xs1 = Eq => [ | H4 ].
-    rewrite time_compare_eq.
-    by rewrite time_eq_eq.
-  rewrite -time_compare_gt in H3.
-  by rewrite H3 in H4.
+  case_eq (y1 :: ys1 ?= x1 :: xs1).
+  + rewrite time_compare_eq time_eq_eq => ->.
+    by rewrite time_gt_false.
+  + move => H2.
+    rewrite /time_gt.
+    by rewrite H2.
+  + move => H2.
+    exfalso.
+    case_eq (y1 ?= x1)%nat.
+    * move => H3.
+      rewrite /time_compare in H2.
+      rewrite H3 in H2.
+      Search time_compare time_gt
+
 Qed.
 
 (* 
