@@ -1,5 +1,6 @@
 (include_subdirs qualified)
 (coq.theory
   (name CoqFRP)
-  (synopsis "Automatic proof of FRP programmes using Coq."))
-
+  (synopsis "Automatic proof of FRP programmes using Coq.")
+  (flags (-R "/home/%{env:USER=}/.opam/default/lib/coq/user-contrib/Stdlib" Stdlib))
+)
