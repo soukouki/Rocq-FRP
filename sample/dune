@@ -1,0 +1,6 @@
+(include_subdirs qualified)
+(coq.theory
+  (name CoqFRPSample)
+  (theories CoqFRP)
+  (flags (-R "/home/%{env:USER=}/.opam/default/lib/coq/user-contrib/Stdlib" Stdlib))
+)
