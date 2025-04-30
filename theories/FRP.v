@@ -395,17 +395,22 @@ induction s.
 - by apply str_timing_is_asc_order_filter.
 Qed.
 
-Lemma occs_knit_nil a (s : stream a) : occs_knit (occs s, []) = occs s.
+Lemma occs_knit_nil_right a (s : str a) : occs_knit (s, []) = s.
 Proof.
 rewrite occs_knit_equation.
 rewrite app_nil_r.
-by case (occs s) => // [[t1 a1] s1].
+by case s => // [[t1 a1] s1].
+Qed.
+
+Lemma occs_knit_nil_left a (s : str a) : occs_knit ([], s) = s.
+Proof.
+by rewrite occs_knit_equation.
 Qed.
 
 Theorem occs_merge_never_right a f (s : stream a) : occs (merge s (never a) f) = occs s.
 Proof.
 rewrite /=.
-rewrite occs_knit_nil.
+rewrite occs_knit_nil_right.
 move : (str_timing_is_asc_order_occs s).
 move : (occs s) => s0.
 induction s0 as [ | [t1 a1] s1] => [ _ | ].
