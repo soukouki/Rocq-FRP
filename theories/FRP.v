@@ -19,6 +19,7 @@ Fixpoint str_timing_is_asc_order a (s : str a) : bool :=
   | (t1, a1) :: ((t2, a2) :: _) as tas => (t1 <? t2) && str_timing_is_asc_order tas
   end.
 
+(* 本来は更にプリミティブが何種類かあるが、今回証明するモデルでは省略する *)
 Inductive stream a :=
   | mk_stream : { s : str a | str_timing_is_asc_order s = true } -> stream a
   | never : stream a
@@ -28,7 +29,7 @@ Inductive stream a :=
   | filter : (a -> bool) -> stream a -> stream a
 with cell a :=
   | constant : a -> cell a
-  | hold : a -> stream a -> time -> cell a
+  | hold : a -> stream a (* -> time *) -> cell a (* Sodiumの意味論ではholdはTを受け取るが、今回実装するモデルではここに0が入るとする *)
   | map_c prev : (prev -> a) -> cell prev -> cell a
   | apply prev : cell (prev -> a) -> cell prev -> cell a.
 
@@ -108,7 +109,7 @@ Fixpoint occs a (s_ : stream a) : str a :=
 with steps a (c_ : cell a) : cel a :=
   match c_ with
   | constant a => (a, [])
-  | hold a s t0 => (a, coalesce (fun x y => y) (List.filter (fun ta => t0 <? fst ta) (occs s)))
+  | hold a s => (a, coalesce (fun x y => y) (occs s))
   | map_c f c =>
     let stp := steps c in
     (f (fst stp), map (fun ta => (fst ta, f (snd ta))) (snd stp))

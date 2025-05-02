@@ -263,7 +263,7 @@ case (f a1) => /= H1.
   by apply IHs1.
 Qed.
 
-Theorem hold_subset_timing a (a0 : a) (s : stream a) (t : time) : subset_timing (cell_timing (hold a0 s t)) (stream_timing s).
+Theorem cell_timing_hold a (a0 : a) (s : stream a) : cell_timing (hold a0 s) = stream_timing s.
 Admitted.
 
 Theorem cell_timing_map_c a b (f : a -> b) (c : cell a) : cell_timing (map_c f c) = cell_timing c.
