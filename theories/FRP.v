@@ -149,12 +149,41 @@ apply H3 with (a' := a1).
 by apply in_eq.
 Qed.
 
-(* 2時間位格闘したけれど示せなかった *)
+Lemma str_timing_is_asc_order_head_lt a t0 a0 t1 a1 (s1 : str a) :
+  str_timing_is_asc_order ((t0, a0) :: (t1, a1) :: s1) = true ->
+  t0 < t1.
+Proof.
+rewrite /str_timing_is_asc_order.
+rewrite Bool.andb_true_iff.
+case => H1 _.
+by apply ltb_lt in H1.
+Qed.
+
 Lemma str_timing_is_asc_order_lt a t0 a0 (s0 : str a) :
   str_timing_is_asc_order ((t0, a0) :: s0) = true ->
   forall t' a', In (t', a') s0 -> t0 < t'.
 Proof.
-Admitted.
+move : t0 a0.
+induction s0 as [ | [t1 a1] s1 ] => //.
+move => t0 a0 H1 t' a' /= H2.
+case H2 => H3.
+- inversion H3.
+  subst; clear H2 H3.
+  by apply str_timing_is_asc_order_head_lt in H1.
+- apply IHs1 with (a0 := a0) (a' := a') => //.
+  move : H1.
+  case s1 => [ | [t2 a2] s2 ] => //= H4.
+  rewrite Bool.andb_true_iff in H4.
+  case H4 => H5 H6.
+  rewrite Bool.andb_true_iff in H6.
+  case H6 => H7 H8.
+  clear IHs1 H2 H4 H6.
+  rewrite Bool.andb_true_iff.
+  split => //.
+  rewrite ltb_lt.
+  rewrite 2!ltb_lt in H5 H7.
+  by apply (lt_trans _ _ _ H5 H7).
+Qed.
 
 Lemma str_timing_is_asc_order_first_lt a (ta1 ta2 : time * a) tas2 :
   str_timing_is_asc_order (ta1 :: ta2 :: tas2) = true -> fst ta1 <? fst ta2 = true.
@@ -214,19 +243,29 @@ Lemma str_timing_is_asc_order_coalesce_ignore_head_value a (s0 : str a) (f : a -
   str_timing_is_asc_order (coalesce f ((t0, b0) :: s0)) = true.
 Proof.
 move : t0 a0 b0.
-induction s0 as [ | [t1 a1] s1] => [ t0 a0 b0 | t0 a0 b0 ].
-  by rewrite 4!coalesce_equation.
-rewrite coalesce_equation [coalesce f ((t0, b0) :: _ )]coalesce_equation.
-case_eq (t0 =? t1) => H1.
-- rewrite eqb_eq in H1.
-  by apply IHs1.
-- rewrite eqb_neq in H1. (* いらんかも *)
-  Search str_timing_is_asc_order.
-  move => H2.
-  apply str_timing_is_asc_order_tail in H2.
-  apply str_timing_is_asc_order_head => // t' H3.
-  
+induction s0 as [ | [t1 c1] s1 ] => t0 a0 b0.
+- rewrite 4!coalesce_equation.
+  by rewrite /str_timing_is_asc_order.
+- rewrite 2![coalesce f (_ :: _ :: s1)]coalesce_equation.
+  case (t0 =? t1).
+    by apply IHs1.
+  move : IHs1.
+  case s1 => [ | [ t2 a2 ] s2 ].
+  + move => H1 H2.
+    rewrite /=.
+    rewrite 2!coalesce_equation.
+    by rewrite 2!coalesce_equation in H2.
+  + move => IHs1 H1.
+    rewrite /=.
+    rewrite coalesce_equation.
+    case (t1 =? t2).
+    * admit.
+    * admit.
+
+
+
 Admitted.
+
 
 Lemma str_timing_is_asc_order_ignore_head_value a (s0 : str a) t0 a0 b0 :
   str_timing_is_asc_order ((t0, a0) :: s0) = true ->
@@ -259,7 +298,7 @@ Lemma coalesce_min a (f : a -> a -> a) ta0 a0 sa0 tb0 b0 sb0 :
   str_timing_is_asc_order ((ta0, a0) :: sa0) = true ->
   str_timing_is_asc_order ((tb0, b0) :: sb0) = true ->
   ta0 <= tb0 ->
-  coalesce f ((ta0, a0) :: occs_knit (sa0, sb0)) = (ta0, a0) :: occs_knit (sa0, sb0).
+  coalesce f ((ta0, a0) :: occs_knit (sa0, sb0)) = (ta0, a0) :: coalesce f(occs_knit (sa0, sb0)).
 Proof.
 Admitted.
 
@@ -274,7 +313,7 @@ Admitted.
 Lemma str_timing_is_asc_order_occs_knit a (f : a -> a -> a) t0 a0 sa b0 sb :
   str_timing_is_asc_order ((t0, a0) :: sa) = true ->
   str_timing_is_asc_order ((t0, b0) :: sb) = true ->
-  str_timing_is_asc_order ((t0, f a0 b0) :: occs_knit (sa, sb)) = true.
+  str_timing_is_asc_order ((t0, f a0 b0) :: coalesce f (occs_knit (sa, sb))) = true.
 Proof.
 Admitted.
 

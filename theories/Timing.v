@@ -161,13 +161,41 @@ Lemma coalesce_occs_knit_gt a (f : a -> a -> a) (t1_1 t2_1 : time) (a1_1 a2_1 : 
   str_timing_is_asc_order ((t1_1, a1_1) :: s1_1) = true ->
   str_timing_is_asc_order ((t2_1, a2_1) :: s2_1) = true ->
   coalesce f ((t2_1, a2_1) :: occs_knit ((t1_1, a1_1) :: s1_1, s2_1)) = (t2_1, a2_1) :: coalesce f (occs_knit ((t1_1, a1_1) :: s1_1, s2_1)).
-Admitted.
+Proof.
+remember (occs_knit ((t1_1, a1_1) :: s1_1, s2_1)) as s3.
+move : t1_1 a1_1 s1_1 t2_1 a2_1 s2_1 Heqs3.
+induction s3 as [ | [t3_1 a3_1] s3_1 ] => t1_1 a1_1 s1_1 t2_1 a2_1 s2_1 Heqs3 H1 H2 H3.
+  by rewrite 2!coalesce_equation.
+rewrite coalesce_equation.
+suff : (t2_1 =? t3_1) = false => [ -> | ].
+  by case s3_1 => [ | [t3_2 a3_2] s3_2].
+clear IHs3_1.
+move : Heqs3 H3.
+case s2_1 => [ | [t2_2 a2_2] s2_2 ] Heqs3 H3.
+- rewrite occs_knit_nil_right in Heqs3.
+  inversion Heqs3; subst.
+  apply Nat.lt_neq in H1.
+  by rewrite Nat.eqb_neq.
+- rewrite occs_knit_equation in Heqs3.
+  move : Heqs3.
+  case (t1_1 <=? t2_2) => Heqs3.
+  + inversion Heqs3; subst.
+    apply Nat.lt_neq in H1.
+    by rewrite Nat.eqb_neq.
+  + inversion Heqs3; subst.
+    rewrite /= in H3.
+    apply andb_prop in H3.
+    case H3 => H4 _.
+    rewrite Nat.ltb_lt in H4.
+    apply Nat.lt_neq in H4.
+    by rewrite -Nat.eqb_neq in H4.
+Qed.
 
 Theorem merge_subset_timing_left a (f : a -> a -> a) (s1 s2 : stream a) : subset_timing (stream_timing s1) (stream_timing (merge s1 s2 f)).
 Proof.
 rewrite /stream_timing /=.
 move : (str_timing_is_asc_order_occs s2).
-induction (occs s2) as [ | [t2_1 a2_1] s2_1 ] => _ t.
+induction (occs s2) as [ | [t2_1 a2_1] s2_1 ] => Hs2 t.
 - rewrite occs_knit_nil_right.
   move : (str_timing_is_asc_order_occs s1).
   induction (occs s1) as [ | [t1_1 a1_1] s1_1 ] => //= H1.
@@ -197,9 +225,9 @@ induction (occs s2) as [ | [t2_1 a2_1] s2_1 ] => _ t.
       rewrite H3 /=.
       right.
       by apply IHs1_1.
-- move : t2_1 a2_1 s2_1 IHs2_1.
+- move : t2_1 a2_1 s2_1 Hs2 IHs2_1.
   move : (str_timing_is_asc_order_occs s1).
-  induction (occs s1) as [ | [t1_1 a1_1] s1_1 ] => // Hs1 t2_1 a2_1 s2_1 H1 H2.
+  induction (occs s1) as [ | [t1_1 a1_1] s1_1 ] => // Hs1 t2_1 a2_1 s2_1 Hs2 H1 H2.
   rewrite occs_knit_equation.
   case_eq (t1_1 <=? t2_1) => H3.
   + move : IHs1_1 H1 H2 H3.
@@ -240,8 +268,11 @@ induction (occs s2) as [ | [t2_1 a2_1] s2_1 ] => _ t.
   + suff : coalesce f ((t2_1, a2_1) :: occs_knit ((t1_1, a1_1) :: s1_1, s2_1)) = (t2_1, a2_1) :: coalesce f (occs_knit ((t1_1, a1_1) :: s1_1, s2_1)) => [ -> | ].
     * rewrite /=.
       right.
-      apply H1.
-Admitted.
+      apply H1 => //.
+      by apply str_timing_is_asc_order_tail in Hs2.
+    * apply coalesce_occs_knit_gt => //.
+      by rewrite Nat.leb_gt in H3.
+Qed.
 
 Theorem merge_subset_timing_right a (f : a -> a -> a) (s1 s2 : stream a) : subset_timing (stream_timing s2) (stream_timing (merge s1 s2 f)).
 Admitted.
@@ -264,7 +295,22 @@ case (f a1) => /= H1.
 Qed.
 
 Theorem cell_timing_hold a (a0 : a) (s : stream a) : cell_timing (hold a0 s) = stream_timing s.
-Admitted.
+rewrite /cell_timing /stream_timing /=.
+move : (str_timing_is_asc_order_occs s).
+induction (occs s) as [ | [t1 a1] s1 ] => H1 /=.
+  by rewrite coalesce_equation.
+move : IHs1 H1.
+case s1 => [ | [t2 a2] s2 ] IHs1 H1.
+  by rewrite 2!coalesce_equation.
+rewrite coalesce_equation.
+have : (t1 =? t2) = false => [ | -> /= ].
+- apply str_timing_is_asc_order_lt with (t' := t2) (a' := a2) in H1 => //=.
+  + apply Nat.lt_neq in H1.
+    by rewrite Nat.eqb_neq.
+  + by left.
+- rewrite IHs1 => //.
+  by apply str_timing_is_asc_order_tail in H1.
+Qed.
 
 Theorem cell_timing_map_c a b (f : a -> b) (c : cell a) : cell_timing (map_c f c) = cell_timing c.
 Proof.
