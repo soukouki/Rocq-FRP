@@ -243,26 +243,44 @@ Lemma str_timing_is_asc_order_coalesce_ignore_head_value a (s0 : str a) (f : a -
   str_timing_is_asc_order (coalesce f ((t0, b0) :: s0)) = true.
 Proof.
 move : t0 a0 b0.
-induction s0 as [ | [t1 c1] s1 ] => t0 a0 b0.
-- rewrite 4!coalesce_equation.
-  by rewrite /str_timing_is_asc_order.
-- rewrite 2![coalesce f (_ :: _ :: s1)]coalesce_equation.
-  case (t0 =? t1).
-    by apply IHs1.
-  move : IHs1.
-  case s1 => [ | [ t2 a2 ] s2 ].
-  + move => H1 H2.
-    rewrite /=.
-    rewrite 2!coalesce_equation.
-    by rewrite 2!coalesce_equation in H2.
-  + move => IHs1 H1.
-    rewrite /=.
+induction s0 as [ | [t1 a1] s1 ] => t0 a0 b0 H1.
+  by rewrite 2!coalesce_equation.
+rewrite coalesce_equation.
+case (t0 =? t1).
+- apply IHs1 with (a0 := a0); clear IHs1 b0.
+  move : t0 a0 t1 a1 H1.
+  induction s1 as [ | [t2 a2] s2 ] => t0 a0 t1 a1 H1.
+    by rewrite 2!coalesce_equation.
+  rewrite coalesce_equation.
+  case_eq (t0 =? t2) => H2.
+  + admit.
+  + rewrite coalesce_equation in H1.
+
+
+  case_eq (t0 =? t2) => H2.
+  + apply IHs2 with (t1 := t2) (a1 := a2).
+    move : H1.
     rewrite coalesce_equation.
-    case (t1 =? t2).
-    * admit.
-    * admit.
+    rewrite [coalesce f ((t0, f a0 a2) :: _)]coalesce_equation.
+    case_eq (t0 =? t1) => H3 H1.
+    * rewrite 2!eqb_eq in H2 H3.
+      subst.
+      rewrite eqb_refl.
+      apply IHs2 with (t1 := t1) (a1 := a2).
 
 
+  move : H1.
+  case s1 => [ | [t2 a2] s2 ].
+  + move => _.
+    by rewrite 2!coalesce_equation.
+  + rewrite 2![coalesce f ((t0, a0) :: _)]coalesce_equation.
+    case_eq (t0 =? t1) => H2.
+    * move => H1.
+      move : H1.
+      case_eq (t0 =? t2) => H3.
+      -- case s2 => [ _ | [t3 a3] s3 H4 ].
+           by rewrite 2!coalesce_equation.
+         rewrite coalesce_equation.
 
 Admitted.
 
