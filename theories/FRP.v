@@ -306,7 +306,7 @@ Lemma coalesce_min a (f : a -> a -> a) ta0 a0 sa0 tb0 b0 sb0 :
 Proof.
 Admitted.
 
-Lemma occs_knit_min a (f : a -> a -> a) ta0 a0 sa0 tb0 (b0 : a) sb0 :
+Lemma occs_knit_min a ta0 a0 sa0 tb0 (b0 : a) sb0 :
   str_timing_is_asc_order ((ta0, a0) :: sa0) = true ->
   str_timing_is_asc_order ((tb0, b0) :: sb0) = true ->
   ta0 <= tb0 ->
@@ -369,7 +369,7 @@ induction (occs sa) as [ | [ta0 a0] sa0 ] => [ _ sb H2 | H4 ].
     * apply compare_eq in H6.
       subst.
       rewrite leb_refl.
-      rewrite (occs_knit_min f a0 _ _ _ _ _ (le_refl tb0)) => //.
+      rewrite (occs_knit_min a0 _ _ _ _ _ (le_refl tb0)) => //.
       rewrite coalesce_equation.
       rewrite eqb_refl.
       rewrite (coalesce_min _ _ _ _ _ _ H5).
@@ -380,17 +380,17 @@ induction (occs sa) as [ | [ta0 a0] sa0 ] => [ _ sb H2 | H4 ].
       move : (lt_le_incl _ _ H6) => H7.
       move : (iffRL (leb_le ta0 tb0) H7) => H8.
       rewrite H8.
-      rewrite (occs_knit_min f a0 _ _ _ _ _ H7) => //.
+      rewrite (occs_knit_min a0 _ _ _ _ _ H7) => //.
       rewrite coalesce_equation.
       move : (lt_neq _ _ H6) => H9.
       rewrite -eqb_neq in H9.
       rewrite H9.
-      rewrite -(occs_knit_min f a0 _ _ _ _ _ H7) => //.
+      rewrite -(occs_knit_min a0 _ _ _ _ _ H7) => //.
       apply str_timing_is_asc_order_head => [ | t' a' H10 ].
       -- apply IHsa0 => //.
          by apply str_timing_is_asc_order_tail in H4.
       -- rewrite str_timing_is_asc_order_coalesce_in in H10.
-         ++ rewrite (occs_knit_min f a0 _ _ _ _ _ H7) => //.
+         ++ rewrite (occs_knit_min a0 _ _ _ _ _ H7) => //.
             apply str_timing_is_asc_order_head.
             ** admit.
             ** admit.
