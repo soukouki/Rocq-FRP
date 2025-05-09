@@ -2,7 +2,7 @@ Set Implicit Arguments.
 
 From Stdlib Require Import ssreflect.
 From Stdlib Require Import List PeanoNat.
-From CoqFRP Require Import FRP.
+From CoqFRP Require Import FRP OccsSteps AscOrder.
 
 Definition timing := list time.
 
@@ -32,6 +32,8 @@ Definition stream_timing a (s : stream a) : timing := map fst (occs s).
 
 Definition cell_timing a (c : cell a) : timing := map fst (snd (steps c)).
 
+(* 以下はtimingに関する定理 *)
+
 Theorem stream_timing_map_s a b (f : a -> b) (s : stream a) : stream_timing (map_s f s) = stream_timing s.
 Proof.
 rewrite /stream_timing /=.
@@ -44,117 +46,6 @@ Proof.
 rewrite /stream_timing /=.
 induction (occs s) => //=.
 by rewrite IHs0.
-Qed.
-
-Lemma coalesce_in_head a (f : a -> a -> a) (t1 : time) (a1 : a) (s1 : str a) :
-  In t1 (map fst (coalesce f ((t1, a1) :: s1))).
-Proof.
-move : a1.
-induction s1 as [ | [t2 a2] s2 ] => a1.
-- rewrite 2!coalesce_equation /=.
-  by left.
-- rewrite coalesce_equation.
-  case (t1 =? t2) => /=.
-  + by apply IHs2.
-  + by left.
-Qed.
-
-Lemma coalesce_in_tail a (f : a -> a -> a) (t1 : time) (a1 : a) (t : time) (s1 : str a) :
-  In t (map fst s1) -> In t (map fst (coalesce f ((t1, a1) :: s1))).
-Proof.
-move : t a1 t1.
-induction s1 as [ | [t2 a2] s2 ] => // t a1 t1 H1.
-rewrite coalesce_equation.
-case_eq (t1 =? t2) => H2.
-- case H1 => H3.
-  + rewrite /= in H3.
-    rewrite Nat.eqb_eq in H2.
-    subst.
-    by apply coalesce_in_head.
-  + by apply IHs2.
-- rewrite /=.
-  right.
-  case H1 => H3.
-  + rewrite /= in H3.
-    subst.
-    by apply coalesce_in_head.
-  + by apply IHs2.
-Qed.
-
-Lemma occs_knit_in_left a (t : time) (s1 s2 : str a) :
-  In t (map fst s1) ->
-  In t (map fst (occs_knit (s1, s2))).
-Proof.
-move : s2.
-induction s1 as [ | [t1_1 a1_1] s1_1 ] => //= s2 H1.
-case s2 => [ | [t2_1 a2_1] s2_1 ].
-  by rewrite occs_knit_nil_right.
-case H1 => /= [ -> | H3 ]; clear H1.
-- rewrite occs_knit_equation.
-  case (t <=? t2_1) => /=.
-  + by left.
-  + right.
-    induction s2_1 as [ | [t2_2 a2_2] s2_2 ].
-      rewrite occs_knit_nil_right.
-      by left.
-    rewrite occs_knit_equation.
-    case (t <=? t2_2).
-    * by left.
-    * rewrite /=.
-      right.
-      apply IHs2_2.
-- rewrite occs_knit_equation.
-  case (t1_1 <=? t2_1) => /=.
-  + right.
-    by apply IHs1_1.
-  + right.
-    move : t1_1 a1_1.
-    induction s2_1 as [ | [t2_2 a2_2] s2_2 ] => t1_1 a1_1.
-      rewrite occs_knit_nil_right.
-      by right.
-    rewrite occs_knit_equation.
-    case (t1_1 <=? t2_2).
-    * right.
-      by apply IHs1_1.
-    * right.
-      by apply IHs2_2.
-Qed.
-
-Lemma occs_knit_in_right a (t : time) (s1 s2 : str a) :
-  In t (map fst s2) ->
-  In t (map fst (occs_knit (s1, s2))).
-Proof.
-move : s1.
-induction s2 as [ | [t2_1 a2_1] s2_1 ] => //= s1 H1.
-case s1 => [ | [t1_1 a1_1] s1_1 ].
-  by rewrite occs_knit_nil_left.
-case H1 => /= [ -> | H3 ]; clear H1.
-- rewrite occs_knit_equation.
-  case (t1_1 <=? t) => /=.
-  + right.
-    induction s1_1 as [ | [t1_2 a1_2] s1_2 ].
-      rewrite occs_knit_nil_left.
-      by left.
-    rewrite occs_knit_equation.
-    case (t1_2 <=? t) => /=.
-    * right.
-      by apply IHs1_2.
-    * by left.
-  + by left.
-- rewrite occs_knit_equation.
-  case (t1_1 <=? t2_1) => /=.
-  + right.
-    induction s1_1 as [ | [t1_2 a1_2] s1_2 ].
-      rewrite occs_knit_nil_left.
-      by right.
-    rewrite occs_knit_equation.
-    case (t1_2 <=? t2_1) => /=.
-    * right.
-      by apply IHs1_2.
-    * right.
-      by apply IHs2_1.
-  + right.
-    by apply IHs2_1.
 Qed.
 
 Theorem merge_subset_timing_left a (f : a -> a -> a) (s1 s2 : stream a) : subset_timing (stream_timing s1) (stream_timing (merge s1 s2 f)).
@@ -251,13 +142,6 @@ Admitted.
 
 Theorem occs_eq_to_timing_eq a (s1 s2 : stream a) : occs s1 = occs s2 -> stream_timing s1 = stream_timing s2.
 Proof. move => H1; by rewrite /stream_timing H1. Qed.
-
-Lemma steps_knit_nil_left a b (f0 : a -> b) (a0 : a) (c : list (time * a)) :
-  steps_knit f0 a0 (nil, c) = nil.
-Proof.
-rewrite steps_knit_equation.
-case c => [ | [t1 a1] c1 ] => //.
-Admitted.
 
 Theorem cell_timing_apply_constant_right a b (acons : a) (c : cell (a -> b)) :
   cell_timing (apply c (constant acons)) = cell_timing c.

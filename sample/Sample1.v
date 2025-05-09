@@ -1,6 +1,6 @@
 
 From Stdlib Require Import ssreflect.
-From CoqFRP Require Import FRP Timing.
+From CoqFRP Require Import FRP Primitive Timing.
 
 (* 
 // map, snapshot, merge, neverを含む例
