@@ -46,7 +46,8 @@ induction (occs s) => //=.
 by rewrite IHs0.
 Qed.
 
-Lemma coalesce_in_head a (f : a -> a -> a) (t1 : time) (a1 : a) (s1 : str a) : In t1 (map fst (coalesce f ((t1, a1) :: s1))).
+Lemma coalesce_in_head a (f : a -> a -> a) (t1 : time) (a1 : a) (s1 : str a) :
+  In t1 (map fst (coalesce f ((t1, a1) :: s1))).
 Proof.
 move : a1.
 induction s1 as [ | [t2 a2] s2 ] => a1.
@@ -156,48 +157,6 @@ case H1 => /= [ -> | H3 ]; clear H1.
     by apply IHs2_1.
 Qed.
 
-Lemma coalesce_occs_knit_gt_left a (f : a -> a -> a) (t1_1 t2_1 : time) (a1_1 a2_1 : a) (s1_1 s2_1 : str a) :
-  t2_1 < t1_1 ->
-  str_timing_is_asc_order ((t1_1, a1_1) :: s1_1) = true ->
-  str_timing_is_asc_order ((t2_1, a2_1) :: s2_1) = true ->
-  coalesce f ((t2_1, a2_1) :: occs_knit ((t1_1, a1_1) :: s1_1, s2_1)) = (t2_1, a2_1) :: coalesce f (occs_knit ((t1_1, a1_1) :: s1_1, s2_1)).
-Proof.
-remember (occs_knit ((t1_1, a1_1) :: s1_1, s2_1)) as s3.
-move : t1_1 a1_1 s1_1 t2_1 a2_1 s2_1 Heqs3.
-induction s3 as [ | [t3_1 a3_1] s3_1 ] => t1_1 a1_1 s1_1 t2_1 a2_1 s2_1 Heqs3 H1 H2 H3.
-  by rewrite 2!coalesce_equation.
-rewrite coalesce_equation.
-suff : (t2_1 =? t3_1) = false => [ -> | ].
-  by case s3_1 => [ | [t3_2 a3_2] s3_2].
-clear IHs3_1.
-move : Heqs3 H3.
-case s2_1 => [ | [t2_2 a2_2] s2_2 ] Heqs3 H3.
-- rewrite occs_knit_nil_right in Heqs3.
-  inversion Heqs3; subst.
-  apply Nat.lt_neq in H1.
-  by rewrite Nat.eqb_neq.
-- rewrite occs_knit_equation in Heqs3.
-  move : Heqs3.
-  case (t1_1 <=? t2_2) => Heqs3.
-  + inversion Heqs3; subst.
-    apply Nat.lt_neq in H1.
-    by rewrite Nat.eqb_neq.
-  + inversion Heqs3; subst.
-    rewrite /= in H3.
-    apply andb_prop in H3.
-    case H3 => H4 _.
-    rewrite Nat.ltb_lt in H4.
-    apply Nat.lt_neq in H4.
-    by rewrite -Nat.eqb_neq in H4.
-Qed.
-
-Lemma coalesce_occs_knit_gt_right a (f : a -> a -> a) (t1_1 t2_1 : time) (a1_1 a2_1 : a) (s1_1 s2_1 : str a) :
-  t1_1 < t2_1 ->
-  str_timing_is_asc_order ((t1_1, a1_1) :: s1_1) = true ->
-  str_timing_is_asc_order ((t2_1, a2_1) :: s2_1) = true ->
-  coalesce f ((t1_1, a1_1) :: occs_knit (s1_1, (t2_1, a2_1) :: s2_1)) = (t2_1, a2_1) :: coalesce f (occs_knit (s1_1, (t1_1, a1_1) :: s2_1)).
-Admitted.
-
 Theorem merge_subset_timing_left a (f : a -> a -> a) (s1 s2 : stream a) : subset_timing (stream_timing s1) (stream_timing (merge s1 s2 f)).
 Proof.
 rewrite /stream_timing /=.
@@ -218,7 +177,8 @@ case (occs s2) as [ | [t2_1 a2_1] s2_1 ] => [ | t' H2 ].
     by apply occs_knit_in_left.
 Qed.
 
-Theorem merge_subset_timing_right a (f : a -> a -> a) (s1 s2 : stream a) : subset_timing (stream_timing s2) (stream_timing (merge s1 s2 f)).
+Theorem merge_subset_timing_right a (f : a -> a -> a) (s1 s2 : stream a) :
+  subset_timing (stream_timing s2) (stream_timing (merge s1 s2 f)).
 Proof.
 rewrite /stream_timing /=.
 case (occs s1) as [ | [t1_1 a1_1] s1_1 ] => [ | t' H2 ].
