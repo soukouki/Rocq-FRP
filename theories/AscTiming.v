@@ -113,13 +113,6 @@ rewrite IH; clear IH.
   by apply is_asc_timing_first_lt in H1.
 Qed.
 
-Lemma is_asc_timing_ignore_head_value a (s0 : str a) t0 a0 b0 :
-  is_asc_timing ((t0, a0) :: s0) = true ->
-  is_asc_timing ((t0, b0) :: s0) = true.
-Proof.
-by case s0.
-Qed.
-
 Lemma is_asc_timing_to_coalesce_eq a (s : str a) (f : a -> a -> a) :
   is_asc_timing s = true -> coalesce f s = s.
 Proof.
@@ -144,21 +137,6 @@ Proof.
 move => H1.
 by rewrite is_asc_timing_to_coalesce_eq.
 Qed.
-
-Lemma is_asc_timing_coalesce_ignore_head_value a (s0 : str a) (f : a -> a -> a) t0 a0 b0 :
-  is_asc_timing (coalesce f ((t0, a0) :: s0)) = true ->
-  is_asc_timing (coalesce f ((t0, b0) :: s0)) = true.
-Proof.
-move : t0 a0 b0.
-induction s0 as [ | [t1 a1] s1 ] => t0 a0 b0 H1.
-  by rewrite 2!coalesce_equation.
-rewrite coalesce_equation.
-case (t0 =? t1).
-- apply IHs1 with (a0 := a0); clear IHs1 b0.
-  move : t0 a0 t1 a1 H1.
-  induction s1 as [ | [t2 a2] s2 ] => t0 a0 t1 a1 H1.
-    by rewrite 2!coalesce_equation.
-Admitted.
 
 Lemma coalesce_min_le a (f : a -> a -> a) ta0 a0 sa0 tb0 b0 sb0 :
   is_asc_timing ((ta0, a0) :: sa0) = true ->
@@ -330,6 +308,31 @@ induction s.
 - by apply is_asc_timing_merge.
 - by apply is_asc_timing_filter.
 Qed.
+
+(*
+(* 使いそうと思ったが意外と使わなかった補題 *)
+Lemma is_asc_timing_steps_hold a (a0 : a) (s : stream a) :
+  is_asc_timing (snd (steps (hold a0 s))) = true.
+Admitted.
+
+Lemma is_asc_timing_steps_map_c a b (f : a -> b) (c : cell a) :
+  is_asc_timing (snd (steps (map_c f c))) = true.
+Admitted.
+
+Lemma is_asc_timing_steps_apply a b (c1 : cell (a -> b)) (c2 : cell a) :
+  is_asc_timing (snd (steps (apply c1 c2))) = true.
+Admitted.
+
+Lemma is_asc_timing_steps a (c : cell a) :
+  is_asc_timing (snd (steps c)) = true.
+Proof.
+induction c.
+- by [].
+- by apply is_asc_timing_steps_hold.
+- by apply is_asc_timing_steps_map_c.
+- by apply is_asc_timing_steps_apply.
+Qed.
+ *)
 
 
 

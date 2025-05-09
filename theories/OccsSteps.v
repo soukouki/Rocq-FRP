@@ -51,12 +51,12 @@ Function steps_knit p a (f0 : p -> a) (p0 : p) (fps : (list (time * (p -> a)) * 
   match fps with
   | (((ft1, f1) :: fs1) as fs, ((pt1, p1) :: ps1) as ps) =>
     match ft1 ?= pt1 with
-    | Lt => steps_knit f1 p0 (fs1, ps)
-    | Gt => steps_knit f0 p1 (fs, ps1)
-    | Eq => steps_knit f1 p1 (fs1, ps1)
+    | Lt => (ft1, f1 p0) :: steps_knit f1 p0 (fs1, ps)
+    | Gt => (pt1, f0 p1) :: steps_knit f0 p1 (fs, ps1)
+    | Eq => (ft1, f1 p1) :: steps_knit f1 p1 (fs1, ps1)
     end
-  | ((ft1, f1) :: fs1, []) => steps_knit f1 p0 (fs1, [])
-  | ([], (pt1, p1) :: ps1) => steps_knit f0 p1 ([], ps1)
+  | ((ft1, f1) :: fs1, []) => (ft1, f1 p0) :: steps_knit f1 p0 (fs1, [])
+  | ([], (pt1, p1) :: ps1) => (pt1, f0 p1) :: steps_knit f0 p1 ([], ps1)
   | ([], []) => []
   end.
 Proof.
@@ -217,10 +217,37 @@ case H1 => /= [ -> | H3 ]; clear H1.
     by apply IHs2_1.
 Qed.
 
+Lemma steps_knit_nil_right p a (f0 : p -> a) (p0 : p) (cf : list (time * (p -> a))) :
+  steps_knit f0 p0 (cf, []) = map (fun tp => (fst tp, (snd tp) p0)) cf.
+Proof.
+move : f0 p0.
+induction cf as [ | [tf1 f1] cf1 ] => f0 p0.
+  by rewrite steps_knit_equation.
+rewrite steps_knit_equation.
+by rewrite IHcf1.
+Qed.
 
+Lemma steps_knit_nil_left p a (f0 : p -> a) (p0 : p) (cp : list (time * p)) :
+  steps_knit f0 p0 ([], cp) = map (fun tp => ((fst tp), f0 (snd tp))) cp.
+Proof.
+move : f0 p0.
+induction cp as [ | [tp1 p1] cp1 ] => f0 p0.
+  by rewrite steps_knit_equation.
+rewrite steps_knit_equation.
+by rewrite IHcp1.
+Qed.
 
+Lemma steps_knit_in_left p a (t : time) f1 a1 (cf1 : list (time * (p -> a))) (cp1 : list (time * p)) :
+  In t (map fst cf1) ->
+  In t (map fst (steps_knit f1 a1 (cf1, cp1))).
+Proof.
+Admitted.
 
-
+Lemma steps_knit_in_right p a (t : time) f1 a1 (cf1 : list (time * (p -> a))) (cp1 : list (time * p)) :
+  In t (map fst cp1) ->
+  In t (map fst (steps_knit f1 a1 (cf1, cp1))).
+Proof.
+Admitted.
 
 
 

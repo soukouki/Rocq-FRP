@@ -106,6 +106,11 @@ case (f a1) => /= H1.
   by apply IHs1.
 Qed.
 
+(* 
+coalesceが結論に出てくる。
+sについての帰納法を書く中で、coalesceによって、要素がまとめられることは無いことを示す必要がある。
+その際に、occs関数の戻り値がis_asc_timingであることを使う必要があり、is_asc_timing_occsを使うことになる。
+ *)
 Theorem cell_timing_hold a (a0 : a) (s : stream a) : cell_timing (hold a0 s) = stream_timing s.
 rewrite /cell_timing /stream_timing /=.
 move : (is_asc_timing_occs s).
@@ -133,30 +138,68 @@ rewrite /= in IHc1.
 by rewrite IHc1.
 Qed.
 
-Theorem apply_subset_timing_left a b (c1 : cell (a -> b)) (c2 : cell a) : subset_timing (cell_timing c1) (cell_timing (apply c1 c2)).
+Lemma in_map_fst p a (f : p -> a) (c : list (time * p)) t :
+  In t (map fst c) ->
+  In t (map fst (map (fun tp => (fst tp, f (snd tp))) c)).
 Proof.
-Admitted.
+induction c as [ | [t1 p1] c1 ] => // H1.
+rewrite /=.
+case H1 => H2.
+- left.
+  by inversion H2.
+- right.
+  by apply IHc1.
+Qed.
 
-Theorem apply_subset_timing_right a b (c1 : cell (a -> b)) (c2 : cell a) : subset_timing (cell_timing c2) (cell_timing (apply c1 c2)).
-Admitted.
+Theorem apply_subset_timing_left p b (cf : cell (p -> b)) (cp : cell p) : subset_timing (cell_timing cf) (cell_timing (apply cf cp)).
+Proof.
+rewrite /cell_timing /=.
+move : (steps cf) (steps cp) => [f0 cf0] [p0 cp0]; clear cf cp.
+move => t H1.
+by apply steps_knit_in_left.
+Qed.
+
+Theorem apply_subset_timing_right p a (cf : cell (p -> a)) (cp : cell p) : subset_timing (cell_timing cp) (cell_timing (apply cf cp)).
+rewrite /cell_timing /=.
+move : (steps cf) (steps cp) => [f0 cf0] [p0 cp0]; clear cf cp.
+move => t H1.
+by apply steps_knit_in_right.
+Qed.
 
 Theorem occs_eq_to_timing_eq a (s1 s2 : stream a) : occs s1 = occs s2 -> stream_timing s1 = stream_timing s2.
 Proof. move => H1; by rewrite /stream_timing H1. Qed.
 
-Theorem cell_timing_apply_constant_right a b (acons : a) (c : cell (a -> b)) :
+Theorem cell_timing_apply_constant_right p a (acons : p) (c : cell (p -> a)) :
   cell_timing (apply c (constant acons)) = cell_timing c.
 Proof.
 rewrite /cell_timing /=.
-case (steps c) => f0 c0.
-induction c0 as [ | [t1 f1] c1 ] => //=.
+move : (steps c) => [f0 cf0]; clear c.
+induction cf0 as [ | [tf1 f1] cf1].
   by rewrite steps_knit_equation.
-rewrite /= in IHc1.
-rewrite -IHc1.
-Admitted.
+rewrite /= in IHcf1.
+rewrite steps_knit_equation /=.
+rewrite -IHcf1; clear IHcf1.
+by rewrite 2!steps_knit_equation.
+Qed.
 
-Theorem cell_timing_apply_constant_left a b (fcons : a -> b) (c : cell a) :
+Theorem cell_timing_apply_constant_left p a (fcons : p -> a) (c : cell p) :
   cell_timing (apply (constant fcons) c) = cell_timing c.
-Admitted.
+Proof.
+rewrite /cell_timing /=.
+move : (steps c) => [p0 cp0]; clear c.
+induction cp0 as [ | [tp1 p1] cp1 ].
+  by rewrite steps_knit_equation.
+rewrite /= in IHcp1.
+rewrite steps_knit_equation /=.
+rewrite -IHcp1; clear IHcp1.
+by rewrite 2!steps_knit_equation.
+Qed.
+
+
+
+
+
+
 
 
 
