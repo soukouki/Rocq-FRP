@@ -6,10 +6,10 @@ From CoqFRP Require Import FRP OccsSteps.
 Import ListNotations.
 Import Peano PeanoNat.Nat.
 
-(* 以下はstr_timing_is_asc_orderに関する補題 *)
+(* 以下はis_asc_timingに関する補題 *)
 
-Lemma str_timing_is_asc_order_tail a (tp1 : time * a) tps1 :
-  str_timing_is_asc_order (tp1 :: tps1) = true -> str_timing_is_asc_order tps1 = true.
+Lemma is_asc_timing_tail a (tp1 : time * a) tps1 :
+  is_asc_timing (tp1 :: tps1) = true -> is_asc_timing tps1 = true.
 Proof.
 case tp1 => t1 a1.
 case tps1 => // tp2 tps2; clear tps1.
@@ -19,10 +19,10 @@ rewrite Bool.andb_true_iff in H1.
 by case H1.
 Qed.
 
-Lemma str_timing_is_asc_order_head a t0 a0 (s0 : str a) :
-  str_timing_is_asc_order s0 = true ->
+Lemma is_asc_timing_head a t0 a0 (s0 : str a) :
+  is_asc_timing s0 = true ->
   (forall t' a', In (t', a') s0 -> t0 < t') ->
-  str_timing_is_asc_order ((t0, a0) :: s0) = true.
+  is_asc_timing ((t0, a0) :: s0) = true.
 Proof.
 move => H1 H2.
 rewrite /=.
@@ -35,18 +35,18 @@ apply H3 with (a' := a1).
 by apply in_eq.
 Qed.
 
-Lemma str_timing_is_asc_order_head_lt a t0 a0 t1 a1 (s1 : str a) :
-  str_timing_is_asc_order ((t0, a0) :: (t1, a1) :: s1) = true ->
+Lemma is_asc_timing_head_lt a t0 a0 t1 a1 (s1 : str a) :
+  is_asc_timing ((t0, a0) :: (t1, a1) :: s1) = true ->
   t0 < t1.
 Proof.
-rewrite /str_timing_is_asc_order.
+rewrite /is_asc_timing.
 rewrite Bool.andb_true_iff.
 case => H1 _.
 by apply ltb_lt in H1.
 Qed.
 
-Lemma str_timing_is_asc_order_lt a t0 a0 (s0 : str a) :
-  str_timing_is_asc_order ((t0, a0) :: s0) = true ->
+Lemma is_asc_timing_lt a t0 a0 (s0 : str a) :
+  is_asc_timing ((t0, a0) :: s0) = true ->
   forall t' a', In (t', a') s0 -> t0 < t'.
 Proof.
 move : t0 a0.
@@ -55,7 +55,7 @@ move => t0 a0 H1 t' a' /= H2.
 case H2 => H3.
 - inversion H3.
   subst; clear H2 H3.
-  by apply str_timing_is_asc_order_head_lt in H1.
+  by apply is_asc_timing_head_lt in H1.
 - apply IHs1 with (a0 := a0) (a' := a') => //.
   move : H1.
   case s1 => [ | [t2 a2] s2 ] => //= H4.
@@ -71,8 +71,8 @@ case H2 => H3.
   by apply (lt_trans _ _ _ H5 H7).
 Qed.
 
-Lemma str_timing_is_asc_order_first_lt a (ta1 ta2 : time * a) tas2 :
-  str_timing_is_asc_order (ta1 :: ta2 :: tas2) = true -> fst ta1 <? fst ta2 = true.
+Lemma is_asc_timing_first_lt a (ta1 ta2 : time * a) tas2 :
+  is_asc_timing (ta1 :: ta2 :: tas2) = true -> fst ta1 <? fst ta2 = true.
 Proof.
 case ta1 => t1 a1.
 case ta2 => t2 a2.
@@ -81,47 +81,47 @@ rewrite Bool.andb_true_iff in H1.
 by case H1.
 Qed.
 
-Lemma str_timing_is_asc_order_map_s p a (f : p -> a) (s : stream p) :
-  str_timing_is_asc_order (occs s) = true -> str_timing_is_asc_order (occs (map_s f s)) = true.
+Lemma is_asc_timing_map_s p a (f : p -> a) (s : stream p) :
+  is_asc_timing (occs s) = true -> is_asc_timing (occs (map_s f s)) = true.
 Proof.
 rewrite /=.
 move : (occs s) => tas0 H1.
 induction tas0 as [ | ta1 tas1 IH ] => //=.
 rewrite IH; clear IH.
-- by apply str_timing_is_asc_order_tail in H1.
+- by apply is_asc_timing_tail in H1.
 - move : tas1 H1.
   case => // ta2 tas2 H1.
   rewrite /=.
   rewrite Bool.andb_true_iff.
   split => //.
-  by apply str_timing_is_asc_order_first_lt in H1.
+  by apply is_asc_timing_first_lt in H1.
 Qed.
 
-Lemma str_timing_is_asc_order_snapshot a prev_s prev_c (f : prev_s -> prev_c -> a) (s : stream prev_s) (c : cell prev_c) :
-  str_timing_is_asc_order (occs s) = true -> str_timing_is_asc_order (occs (snapshot f s c)) = true.
+Lemma is_asc_timing_snapshot a prev_s prev_c (f : prev_s -> prev_c -> a) (s : stream prev_s) (c : cell prev_c) :
+  is_asc_timing (occs s) = true -> is_asc_timing (occs (snapshot f s c)) = true.
 Proof.
 rewrite /=.
 move : (occs s) => tas0 H1.
 induction tas0 as [ | ta1 tas1 IH ] => //=.
 rewrite IH; clear IH.
-- by apply str_timing_is_asc_order_tail in H1.
+- by apply is_asc_timing_tail in H1.
 - move: tas1 H1.
   case => // ta2 tas2 H1.
   rewrite /=.
   rewrite Bool.andb_true_iff.
   split => //.
-  by apply str_timing_is_asc_order_first_lt in H1.
+  by apply is_asc_timing_first_lt in H1.
 Qed.
 
-Lemma str_timing_is_asc_order_ignore_head_value a (s0 : str a) t0 a0 b0 :
-  str_timing_is_asc_order ((t0, a0) :: s0) = true ->
-  str_timing_is_asc_order ((t0, b0) :: s0) = true.
+Lemma is_asc_timing_ignore_head_value a (s0 : str a) t0 a0 b0 :
+  is_asc_timing ((t0, a0) :: s0) = true ->
+  is_asc_timing ((t0, b0) :: s0) = true.
 Proof.
 by case s0.
 Qed.
 
-Lemma str_timing_is_asc_order_to_coalesce_eq a (s : str a) (f : a -> a -> a) :
-  str_timing_is_asc_order s = true -> coalesce f s = s.
+Lemma is_asc_timing_to_coalesce_eq a (s : str a) (f : a -> a -> a) :
+  is_asc_timing s = true -> coalesce f s = s.
 Proof.
 induction s as [ | [t1 a1] s1 ].
   by rewrite coalesce_equation.
@@ -132,22 +132,22 @@ rewrite coalesce_equation.
 have : (t1 =? t2) = false => [ | -> ].
   rewrite eqb_neq.
   apply lt_neq.
-  apply (str_timing_is_asc_order_lt _ _ _ H1 _ a2).
+  apply (is_asc_timing_lt _ _ _ H1 _ a2).
   by left.
 rewrite IHs1 => //.
-by apply str_timing_is_asc_order_tail in H1.
+by apply is_asc_timing_tail in H1.
 Qed.
 
-Lemma str_timing_is_asc_order_coalesce a (s : str a) (f : a -> a -> a) :
-  str_timing_is_asc_order s = true -> str_timing_is_asc_order (coalesce f s) = true.
+Lemma is_asc_timing_coalesce a (s : str a) (f : a -> a -> a) :
+  is_asc_timing s = true -> is_asc_timing (coalesce f s) = true.
 Proof.
 move => H1.
-by rewrite str_timing_is_asc_order_to_coalesce_eq.
+by rewrite is_asc_timing_to_coalesce_eq.
 Qed.
 
-Lemma str_timing_is_asc_order_coalesce_ignore_head_value a (s0 : str a) (f : a -> a -> a) t0 a0 b0 :
-  str_timing_is_asc_order (coalesce f ((t0, a0) :: s0)) = true ->
-  str_timing_is_asc_order (coalesce f ((t0, b0) :: s0)) = true.
+Lemma is_asc_timing_coalesce_ignore_head_value a (s0 : str a) (f : a -> a -> a) t0 a0 b0 :
+  is_asc_timing (coalesce f ((t0, a0) :: s0)) = true ->
+  is_asc_timing (coalesce f ((t0, b0) :: s0)) = true.
 Proof.
 move : t0 a0 b0.
 induction s0 as [ | [t1 a1] s1 ] => t0 a0 b0 H1.
@@ -161,72 +161,72 @@ case (t0 =? t1).
 Admitted.
 
 Lemma coalesce_min_le a (f : a -> a -> a) ta0 a0 sa0 tb0 b0 sb0 :
-  str_timing_is_asc_order ((ta0, a0) :: sa0) = true ->
-  str_timing_is_asc_order ((tb0, b0) :: sb0) = true ->
+  is_asc_timing ((ta0, a0) :: sa0) = true ->
+  is_asc_timing ((tb0, b0) :: sb0) = true ->
   ta0 <= tb0 ->
   coalesce f ((ta0, a0) :: occs_knit (sa0, sb0)) = (ta0, a0) :: coalesce f(occs_knit (sa0, sb0)).
 Proof.
 Admitted.
 
 Lemma coalesce_min_lt_right a (f : a -> a -> a) ta0 a0 sa0 tb0 b0 sb0 :
-  str_timing_is_asc_order ((ta0, a0) :: sa0) = true ->
-  str_timing_is_asc_order ((tb0, b0) :: sb0) = true ->
+  is_asc_timing ((ta0, a0) :: sa0) = true ->
+  is_asc_timing ((tb0, b0) :: sb0) = true ->
   ta0 < tb0 ->
   coalesce f ((ta0, a0) :: occs_knit (sa0, (tb0, b0) :: sb0)) = (ta0, a0) :: coalesce f(occs_knit (sa0, (tb0, b0) :: sb0)).
 Proof.
 Admitted.
 
 Lemma coalesce_min_lt_left a (f : a -> a -> a) ta0 a0 sa0 tb0 b0 sb0 :
-  str_timing_is_asc_order ((ta0, a0) :: sa0) = true ->
-  str_timing_is_asc_order ((tb0, b0) :: sb0) = true ->
+  is_asc_timing ((ta0, a0) :: sa0) = true ->
+  is_asc_timing ((tb0, b0) :: sb0) = true ->
   tb0 < ta0 ->
   coalesce f ((tb0, b0) :: occs_knit ((ta0, a0) :: sa0, sb0)) = (ta0, a0) :: coalesce f(occs_knit ((ta0, a0) :: sa0, sb0)).
 Proof.
 Admitted.
 
 Lemma occs_knit_min a ta0 a0 sa0 tb0 (b0 : a) sb0 :
-  str_timing_is_asc_order ((ta0, a0) :: sa0) = true ->
-  str_timing_is_asc_order ((tb0, b0) :: sb0) = true ->
+  is_asc_timing ((ta0, a0) :: sa0) = true ->
+  is_asc_timing ((tb0, b0) :: sb0) = true ->
   ta0 <= tb0 ->
   occs_knit (sa0, (tb0, b0) :: sb0) = (tb0, b0) :: occs_knit (sa0, sb0).
 Proof.
 Admitted.
 
-Lemma str_timing_is_asc_order_min_coalesce_occs_knit a (f : a -> a -> a) (t1 ta2 : time) (a1 a2 b1 : a) (sa2 sb1 : str a) :
-  str_timing_is_asc_order ((t1, a1) :: (ta2, a2) :: sa2) = true ->
-  str_timing_is_asc_order ((t1, b1) :: sb1) = true ->
-  str_timing_is_asc_order ((t1, f a1 b1) :: coalesce f (occs_knit ((ta2, a2) :: sa2, sb1))) = true.
+Lemma is_asc_timing_min_coalesce_occs_knit a (f : a -> a -> a) (t1 ta2 : time) (a1 a2 b1 : a) (sa2 sb1 : str a) :
+  is_asc_timing ((t1, a1) :: (ta2, a2) :: sa2) = true ->
+  is_asc_timing ((t1, b1) :: sb1) = true ->
+  is_asc_timing ((t1, f a1 b1) :: coalesce f (occs_knit ((ta2, a2) :: sa2, sb1))) = true.
 Proof.
 Admitted.
 
 Lemma coalesce_occs_knit_exists_right a (f : a -> a -> a) (ta1 tb1 : time) (a1 b1 : a) (sa1 sb1 : str a) :
-  str_timing_is_asc_order ((ta1, a1) :: sa1) = true ->
-  str_timing_is_asc_order ((tb1, b1) :: sb1) = true ->
+  is_asc_timing ((ta1, a1) :: sa1) = true ->
+  is_asc_timing ((tb1, b1) :: sb1) = true ->
   exists tm1 m1 sm1,
     coalesce f (occs_knit (sa1, (tb1, b1) :: sb1)) = (tm1, m1) :: sm1 /\ ta1 < tm1.
 Admitted.
 
 Lemma coalesce_occs_knit_exists_left a (f : a -> a -> a) (ta1 tb1 : time) (a1 b1 : a) (sa1 sb1 : str a) :
-  str_timing_is_asc_order ((ta1, a1) :: sa1) = true ->
-  str_timing_is_asc_order ((tb1, b1) :: sb1) = true ->
+  is_asc_timing ((ta1, a1) :: sa1) = true ->
+  is_asc_timing ((tb1, b1) :: sb1) = true ->
   exists tm1 m1 sm1,
     coalesce f (occs_knit ((ta1, a1) :: sa1, sb1)) = (tm1, m1) :: sm1 /\ ta1 < tm1.
 Admitted.
 
-Lemma str_timing_is_asc_order_merge a (sa sb : stream a) (f : a -> a -> a) :
-  str_timing_is_asc_order (occs sa) = true ->
-  str_timing_is_asc_order (occs sb) = true ->
-  str_timing_is_asc_order (occs (merge sa sb f)) = true.
+Lemma is_asc_timing_merge a (sa sb : stream a) (f : a -> a -> a) :
+  is_asc_timing (occs sa) = true ->
+  is_asc_timing (occs sb) = true ->
+  is_asc_timing (occs (merge sa sb f)) = true.
 Proof.
 rewrite /=.
 move : (occs sa) (occs sb) => sa0 sb0; clear sa sb.
 induction sa0 as [ | [ta1 a1] sa1 ] => H1 H2; try clear sa0.
   rewrite occs_knit_nil_left.
-  by apply str_timing_is_asc_order_coalesce.
+  by apply is_asc_timing_coalesce.
 move : ta1 a1 sa1 IHsa1 H1 H2.
 induction sb0 as [ | [tb1 b1] sb1 ] => ta1 a1 sa1 IHsa1 H1 H2.
   rewrite occs_knit_nil_right.
-  by apply str_timing_is_asc_order_coalesce.
+  by apply is_asc_timing_coalesce.
 rewrite occs_knit_equation.
 case_eq (ta1 ?= tb1) => H3.
 - apply compare_eq in H3.
@@ -238,17 +238,17 @@ case_eq (ta1 ?= tb1) => H3.
   move : sa1 IHsa1 H1.
   case => [ | [ta2 a2] sa2 ] IHsa1 H1.
   + rewrite occs_knit_nil_left.
-    by rewrite str_timing_is_asc_order_to_coalesce_eq.
+    by rewrite is_asc_timing_to_coalesce_eq.
   + rewrite (@coalesce_min_le _ _ _ _ _ tb1 b1) => //.
-    by apply str_timing_is_asc_order_min_coalesce_occs_knit.
+    by apply is_asc_timing_min_coalesce_occs_knit.
 - rewrite compare_lt_iff in H3.
   move : (H3) => H3'.
   apply lt_le_incl in H3'.
   rewrite -leb_le in H3'.
   rewrite H3'.
-  have : str_timing_is_asc_order (coalesce f (occs_knit (sa1, (tb1, b1) :: sb1))) = true => [ | H4 ].
+  have : is_asc_timing (coalesce f (occs_knit (sa1, (tb1, b1) :: sb1))) = true => [ | H4 ].
   + apply IHsa1 => //.
-    by apply str_timing_is_asc_order_tail in H1.
+    by apply is_asc_timing_tail in H1.
   + clear IHsb1 IHsa1 H3'.
     rewrite (@coalesce_min_lt_right _ _ _ _ _ tb1 b1) => //.
     rewrite /= H4; clear H4.
@@ -261,14 +261,14 @@ case_eq (ta1 ?= tb1) => H3.
   rewrite lt_nge in H3'.
   rewrite -leb_nle in H3'.
   rewrite H3'; clear H3'.
-  have : str_timing_is_asc_order (coalesce f (occs_knit ((ta1, a1) :: sa1, sb1))) = true => [ | H4 ].
+  have : is_asc_timing (coalesce f (occs_knit ((ta1, a1) :: sa1, sb1))) = true => [ | H4 ].
   + apply IHsb1 => //.
     * move => H1' H2'.
       clear IHsa1.
       move : sa1 H1 H1'.
       induction sa1 as [ | [ta2 a2] sa2 ] => H1 H1'.
       -- rewrite occs_knit_nil_left.
-         by rewrite str_timing_is_asc_order_coalesce.
+         by rewrite is_asc_timing_coalesce.
       -- apply IHsb1 => // H1'' H2''.
          apply IHsa2 => //.
          clear IHsb1 IHsa2 H1' H1'' H2 H2' H2'' H3.
@@ -280,7 +280,7 @@ case_eq (ta1 ?= tb1) => H3.
          rewrite ltb_lt.
          rewrite 2!ltb_lt in H4 H5.
          by apply (lt_trans _ _ _ H4 H5).
-    * by apply str_timing_is_asc_order_tail in H2.
+    * by apply is_asc_timing_tail in H2.
   + rewrite coalesce_min_lt_left => //.
     rewrite /=.
     rewrite H4.
@@ -297,8 +297,8 @@ Proof.
 by [].
 Qed.
 
-Lemma str_timing_is_asc_order_filter a (f : a -> bool) (s : stream a) :
-  str_timing_is_asc_order (occs s) = true -> str_timing_is_asc_order (occs (filter f s)) = true.
+Lemma is_asc_timing_filter a (f : a -> bool) (s : stream a) :
+  is_asc_timing (occs s) = true -> is_asc_timing (occs (filter f s)) = true.
 Proof.
 rewrite /=.
 induction (occs s) as [ | [t0 a0] s0 ] => //.
@@ -307,31 +307,29 @@ case s0 as [ | [t1 a1] s1 ] => [ _ _ /= | IH H1 ].
   by case (f a0).
 rewrite filter_eq /snd.
 case (f a0).
-- apply str_timing_is_asc_order_head.
+- apply is_asc_timing_head.
   + apply IH.
-    by apply str_timing_is_asc_order_tail in H1.
+    by apply is_asc_timing_tail in H1.
   + move => t' a' H2.
     rewrite filter_In in H2.
     case H2 => H3 H4; clear H2.
-    by apply str_timing_is_asc_order_lt with (a0 := a0) (a' := a') (s0 := (t1, a1) :: s1).
+    by apply is_asc_timing_lt with (a0 := a0) (a' := a') (s0 := (t1, a1) :: s1).
 - apply IH.
-  by apply str_timing_is_asc_order_tail in H1.
+  by apply is_asc_timing_tail in H1.
 Qed.
 
-Theorem str_timing_is_asc_order_occs a (s : stream a) :
-  str_timing_is_asc_order (occs s) = true.
+Lemma is_asc_timing_occs a (s : stream a) :
+  is_asc_timing (occs s) = true.
 Proof.
 induction s.
 - rewrite /=.
   by apply proj2_sig.
 - by [].
-- by apply str_timing_is_asc_order_map_s.
-- by apply str_timing_is_asc_order_snapshot.
-- by apply str_timing_is_asc_order_merge.
-- by apply str_timing_is_asc_order_filter.
+- by apply is_asc_timing_map_s.
+- by apply is_asc_timing_snapshot.
+- by apply is_asc_timing_merge.
+- by apply is_asc_timing_filter.
 Qed.
-
-
 
 
 

@@ -2,7 +2,7 @@ Set Implicit Arguments.
 
 From Stdlib Require Import ssreflect.
 From Stdlib Require Import List PeanoNat.
-From CoqFRP Require Import FRP OccsSteps AscOrder.
+From CoqFRP Require Import FRP OccsSteps AscTiming.
 
 Definition timing := list time.
 
@@ -108,7 +108,7 @@ Qed.
 
 Theorem cell_timing_hold a (a0 : a) (s : stream a) : cell_timing (hold a0 s) = stream_timing s.
 rewrite /cell_timing /stream_timing /=.
-move : (str_timing_is_asc_order_occs s).
+move : (is_asc_timing_occs s).
 induction (occs s) as [ | [t1 a1] s1 ] => H1 /=.
   by rewrite coalesce_equation.
 move : IHs1 H1.
@@ -116,12 +116,12 @@ case s1 => [ | [t2 a2] s2 ] IHs1 H1.
   by rewrite 2!coalesce_equation.
 rewrite coalesce_equation.
 have : (t1 =? t2) = false => [ | -> /= ].
-- apply str_timing_is_asc_order_lt with (t' := t2) (a' := a2) in H1 => //=.
+- apply is_asc_timing_lt with (t' := t2) (a' := a2) in H1 => //=.
   + apply Nat.lt_neq in H1.
     by rewrite Nat.eqb_neq.
   + by left.
 - rewrite IHs1 => //.
-  by apply str_timing_is_asc_order_tail in H1.
+  by apply is_asc_timing_tail in H1.
 Qed.
 
 Theorem cell_timing_map_c a b (f : a -> b) (c : cell a) : cell_timing (map_c f c) = cell_timing c.

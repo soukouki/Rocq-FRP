@@ -2,7 +2,7 @@ Set Implicit Arguments.
 
 From Stdlib Require Import ssreflect.
 From Stdlib Require Import List Recdef Nat.
-From CoqFRP Require Import FRP OccsSteps AscOrder.
+From CoqFRP Require Import FRP OccsSteps AscTiming.
 Import ListNotations.
 Import Peano PeanoNat.Nat.
 
@@ -20,7 +20,7 @@ Theorem occs_merge_never_right a f (s : stream a) : occs (merge s (never a) f) =
 Proof.
 rewrite /=.
 rewrite occs_knit_nil_right.
-move : (str_timing_is_asc_order_occs s).
+move : (is_asc_timing_occs s).
 move : (occs s) => s0.
 induction s0 as [ | [t1 a1] s1] => [ _ | ].
   by rewrite coalesce_equation.
@@ -31,17 +31,17 @@ case s1 => [ _ _ | [t2 a2] s2 IHs1 H1].
   have : t1 =? t2 = false => [ | -> ].
     rewrite eqb_neq.
     apply lt_neq.
-    apply str_timing_is_asc_order_lt with (a0 := a1) (a' := a2) (s0 := (t2, a2) :: s2) => //.
+    apply is_asc_timing_lt with (a0 := a1) (a' := a2) (s0 := (t2, a2) :: s2) => //.
     apply in_eq.
   rewrite IHs1 => //.
-  by apply str_timing_is_asc_order_tail in H1.
+  by apply is_asc_timing_tail in H1.
 Qed.
 
 Theorem occs_merge_never_left a f (s : stream a) : occs (merge (never a) s f) = occs s.
 Proof.
 rewrite /=.
 rewrite occs_knit_equation /=.
-move : (str_timing_is_asc_order_occs s).
+move : (is_asc_timing_occs s).
 move : (occs s) => s0.
 induction s0 as [ | [t1 a1] s1].
   by rewrite coalesce_equation.
@@ -52,8 +52,8 @@ case s1 => [ _ _ | [t2 a2] s2 IHs1 H1 ].
   have : t1 =? t2 = false => [ | -> ].
     rewrite eqb_neq.
     apply lt_neq.
-    apply str_timing_is_asc_order_lt with (a0 := a1) (a' := a2) (s0 := (t2, a2) :: s2) => //.
+    apply is_asc_timing_lt with (a0 := a1) (a' := a2) (s0 := (t2, a2) :: s2) => //.
     apply in_eq.
   rewrite IHs1 => //.
-  by apply str_timing_is_asc_order_tail in H1.
+  by apply is_asc_timing_tail in H1.
 Qed.

@@ -11,16 +11,16 @@ Definition time := nat.
 Definition str a := list (time * a).
 Definition cel a := (a * (list (time * a)))%type.
 
-Fixpoint str_timing_is_asc_order a (s : str a) : bool :=
+Fixpoint is_asc_timing a (s : str a) : bool :=
   match s with
   | nil => true
   | (t1, a1) :: nil => true
-  | (t1, a1) :: ((t2, a2) :: _) as tas => (t1 <? t2) && str_timing_is_asc_order tas
+  | (t1, a1) :: ((t2, a2) :: _) as tas => (t1 <? t2) && is_asc_timing tas
   end.
 
 (* 本来は更にプリミティブが何種類かあるが、今回証明するモデルでは省略する *)
 Inductive stream a :=
-  | mk_stream : { s : str a | str_timing_is_asc_order s = true } -> stream a
+  | mk_stream : { s : str a | is_asc_timing s = true } -> stream a
   | never : stream a
   | map_s prev : (prev -> a) -> stream prev -> stream a
   | snapshot prev_s prev_c : (prev_s -> prev_c -> a) -> stream prev_s -> cell prev_c -> stream a
