@@ -237,17 +237,70 @@ rewrite steps_knit_equation.
 by rewrite IHcp1.
 Qed.
 
-Lemma steps_knit_in_left p a (t : time) f1 a1 (cf1 : list (time * (p -> a))) (cp1 : list (time * p)) :
-  In t (map fst cf1) ->
-  In t (map fst (steps_knit f1 a1 (cf1, cp1))).
+Lemma in_map_fst p a (f : p -> a) (c : list (time * p)) t :
+  In t (map fst c) ->
+  In t (map fst (map (fun tp => (fst tp, f (snd tp))) c)).
 Proof.
-Admitted.
+induction c as [ | [t1 p1] c1 ] => // H1.
+rewrite /=.
+case H1 => H2.
+- left.
+  by inversion H2.
+- right.
+  by apply IHc1.
+Qed.
 
-Lemma steps_knit_in_right p a (t : time) f1 a1 (cf1 : list (time * (p -> a))) (cp1 : list (time * p)) :
-  In t (map fst cp1) ->
-  In t (map fst (steps_knit f1 a1 (cf1, cp1))).
+Lemma steps_knit_in_left p a (t : time) f1 p1 (cf1 : list (time * (p -> a))) (cp1 : list (time * p)) :
+  In t (map fst cf1) ->
+  In t (map fst (steps_knit f1 p1 (cf1, cp1))).
 Proof.
-Admitted.
+move : cf1 f1 p1.
+induction cp1 as [ | [tp2 p2] cp2 ] => cf1 f1 p1 H1.
+  rewrite steps_knit_nil_right.
+  by apply (in_map_fst (fun f => f p1)).
+move : tp2 p2 cp2 IHcp2 f1 p1 H1.
+induction cf1 as [ | [tf2 f2] cf2 ] => tp2 p2 cp2 IHcp2 f1 p1 H1 => //.
+rewrite steps_knit_equation.
+case (tf2 ?= tp2).
+- case H1 => /= H2.
+  + by left.
+  + right.
+    by apply IHcp2.
+- case H1 => /= H2.
+  + by left.
+  + right.
+    by apply IHcf2.
+- right.
+  by apply IHcp2.
+Qed.
+
+Lemma steps_knit_in_right p a (t : time) f1 p1 (cf1 : list (time * (p -> a))) (cp1 : list (time * p)) :
+  In t (map fst cp1) ->
+  In t (map fst (steps_knit f1 p1 (cf1, cp1))).
+Proof.
+move : cf1 f1 p1.
+induction cp1 as [ | [tp2 p2] cp2 ] => cf1 f1 p1 H1.
+  rewrite steps_knit_nil_right.
+  by apply (in_map_fst (fun f => f p1)).
+move : tp2 p2 cp2 IHcp2 f1 p1 H1.
+induction cf1 as [ | [tf2 f2] cf2 ] => tp2 p2 cp2 IHcp2 f1 p1 H1.
+  rewrite steps_knit_nil_left.
+  by apply in_map_fst.
+rewrite steps_knit_equation.
+case_eq (tf2 ?= tp2) => H2.
+- apply compare_eq in H2.
+  subst.
+  case H1 => /= H3.
+  + by left.
+  + right.
+    by apply IHcp2.
+- right.
+  by apply IHcf2.
+- case H1 => /= H3.
+  + by left.
+  + right.
+    by apply IHcp2.
+Qed.
 
 
 

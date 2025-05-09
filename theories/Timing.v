@@ -138,19 +138,6 @@ rewrite /= in IHc1.
 by rewrite IHc1.
 Qed.
 
-Lemma in_map_fst p a (f : p -> a) (c : list (time * p)) t :
-  In t (map fst c) ->
-  In t (map fst (map (fun tp => (fst tp, f (snd tp))) c)).
-Proof.
-induction c as [ | [t1 p1] c1 ] => // H1.
-rewrite /=.
-case H1 => H2.
-- left.
-  by inversion H2.
-- right.
-  by apply IHc1.
-Qed.
-
 Theorem apply_subset_timing_left p b (cf : cell (p -> b)) (cp : cell p) : subset_timing (cell_timing cf) (cell_timing (apply cf cp)).
 Proof.
 rewrite /cell_timing /=.
