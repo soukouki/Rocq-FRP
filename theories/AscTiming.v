@@ -367,12 +367,25 @@ case_eq (ta1 ?= tb1) => H3.
   rewrite (occs_knit_min _ _ _ _ _ H1 H2) => //.
   rewrite coalesce_equation.
   rewrite eqb_refl.
-  move : sa1 IHsa1 H1.
-  case => [ | [ta2 a2] sa2 ] IHsa1 H1.
-  + rewrite occs_knit_nil_left.
-    by rewrite is_asc_timing_to_coalesce_eq.
-  + rewrite (@coalesce_min_le _ _ _ _ _ tb1 b1) => //.
-    by rewrite is_asc_timing_min_coalesce_occs_knit.
+  move : sa1 tb1 a1 b1 sb1 IHsa1 H1.
+  induction sa1 as [ | [ta2 a2] sa2 ] => IHsa1 H1.
+    rewrite occs_knit_nil_left.
+    by apply is_asc_timing_coalesce.
+  rewrite (@coalesce_min_le a f tb1 (f a1 b1) ((ta2, a2) :: sa2) tb1 b1 sb1) => //.
+  rewrite /=.
+  rewrite IHsb1 => //.
+  + move => H3 H4.
+    
+  + by apply is_asc_timing_tail in H1.
+  + by apply is_asc_timing_tail in H2.
+  + admit.
+
+
+
+
+
+
+
 - rewrite compare_lt_iff in H3.
   move : (H3) => H3'.
   apply lt_le_incl in H3'.
