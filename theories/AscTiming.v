@@ -291,7 +291,7 @@ apply is_asc_timing_head_lt in H1.
 by rewrite leb_nle -lt_nge.
 Qed.
 
-Lemma is_asc_timing_min_coalesce_occs_knit a (f : a -> a -> a) (t1 ta2 : time) (a1 a2 b1 : a) (sa2 sb1 : str a) :
+Lemma is_asc_timing_min_coalesce_occs_knit a (f : a -> a -> a) (t1 : time) (a1 b1 : a) (sa2 sb1 : str a) :
   is_asc_timing ((t1, a1) :: sa2) = true ->
   is_asc_timing ((t1, b1) :: sb1) = true ->
   is_asc_timing ((t1, f a1 b1) :: coalesce f (occs_knit (sa2, sb1))) = true.
@@ -299,7 +299,7 @@ Proof.
 move => H1 H2.
 apply is_asc_timing_head.
 - apply is_asc_timing_tail in H1.
-  apply is_asc_timing_tail in H2; clear t1 a1 a1 ta2 a2 b1.
+  apply is_asc_timing_tail in H2; clear t1 a1 a1 b1.
   move : H1 H2. (* これis_asc_timing_mergeとほとんど一緒！だめ！ *)
 Restart.
 
@@ -372,32 +372,7 @@ case_eq (ta1 ?= tb1) => H3.
   + rewrite occs_knit_nil_left.
     by rewrite is_asc_timing_to_coalesce_eq.
   + rewrite (@coalesce_min_le _ _ _ _ _ tb1 b1) => //.
-
-    rewrite /=.
-    rewrite IHsb1.
-    * move => H3 H4.
-      move : IHsa1 H1 H3.
-      induction sa2 as [ | [ta3 a3] sa3 ] => IHsa1 H1 H3.
-      -- rewrite occs_knit_nil_left.
-         by rewrite is_asc_timing_to_coalesce_eq.
-      -- apply IHsb1 => // H5 H6.
-         apply IHsa3 => //.
-         ++ move => H7 H8.
-            rewrite occs_knit_equation.
-            have : ta2 <=? tb1 = false => [ | -> ].
-              apply is_asc_timing_head_lt in H1.
-              rewrite leb_nle.
-              by rewrite nle_gt.
-            rewrite (@coalesce_min_le _ f _ _ _ tb1 b1) => //.
-            ** admit.
-            ** 
-
-         ++ 
-    * by apply is_asc_timing_tail in H1.
-    * by apply is_asc_timing_tail in H2.
-    * 
-
-
+    by rewrite is_asc_timing_min_coalesce_occs_knit.
 - rewrite compare_lt_iff in H3.
   move : (H3) => H3'.
   apply lt_le_incl in H3'.
