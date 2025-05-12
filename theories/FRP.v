@@ -32,6 +32,11 @@ with cell a :=
   | map_c prev : (prev -> a) -> cell prev -> cell a
   | apply prev : cell (prev -> a) -> cell prev -> cell a.
 
+Definition lift a b c (ca : cell a) (cb : cell b) (f : a -> b -> c) : cell c := apply (map_c f ca) cb.
+
+Definition gate a (s : stream a) (c : cell bool) : stream a :=
+  map_s fst (filter (fun ac => snd ac) (snapshot (fun a' cond => (a', cond)) s c)).
+
 
 
 

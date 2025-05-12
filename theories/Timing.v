@@ -2,7 +2,7 @@ Set Implicit Arguments.
 
 From Stdlib Require Import ssreflect.
 From Stdlib Require Import List PeanoNat.
-From CoqFRP Require Import FRP OccsSteps AscTiming.
+From CoqFRP Require Import FRP OccsSteps AscTiming Primitive.
 
 Definition timing := list time.
 
@@ -153,8 +153,18 @@ move => t H1.
 by apply steps_knit_in_right.
 Qed.
 
-Theorem occs_eq_to_timing_eq a (s1 s2 : stream a) : occs s1 = occs s2 -> stream_timing s1 = stream_timing s2.
-Proof. move => H1; by rewrite /stream_timing H1. Qed.
+Theorem cell_timing_apply_constant_left p a (fcons : p -> a) (c : cell p) :
+  cell_timing (apply (constant fcons) c) = cell_timing c.
+Proof.
+rewrite /cell_timing /=.
+move : (steps c) => [p0 cp0]; clear c.
+induction cp0 as [ | [tp1 p1] cp1 ].
+  by rewrite steps_knit_equation.
+rewrite /= in IHcp1.
+rewrite steps_knit_equation /=.
+rewrite -IHcp1; clear IHcp1.
+by rewrite 2!steps_knit_equation.
+Qed.
 
 Theorem cell_timing_apply_constant_right p a (acons : p) (c : cell (p -> a)) :
   cell_timing (apply c (constant acons)) = cell_timing c.
@@ -169,21 +179,16 @@ rewrite -IHcf1; clear IHcf1.
 by rewrite 2!steps_knit_equation.
 Qed.
 
-Theorem cell_timing_apply_constant_left p a (fcons : p -> a) (c : cell p) :
-  cell_timing (apply (constant fcons) c) = cell_timing c.
-Proof.
-rewrite /cell_timing /=.
-move : (steps c) => [p0 cp0]; clear c.
-induction cp0 as [ | [tp1 p1] cp1 ].
-  by rewrite steps_knit_equation.
-rewrite /= in IHcp1.
-rewrite steps_knit_equation /=.
-rewrite -IHcp1; clear IHcp1.
-by rewrite 2!steps_knit_equation.
-Qed.
+(* Primitiveにある補題をTimingを使った形に変換する *)
 
+Lemma occs_eq_to_timing_eq a (s1 s2 : stream a) : occs s1 = occs s2 -> stream_timing s1 = stream_timing s2.
+Proof. move => H1; by rewrite /stream_timing H1. Qed.
 
+Theorem stream_timing_merge_never_left a f (s : stream a) : stream_timing (merge (never a) s f) = stream_timing s.
+Proof. by apply /occs_eq_to_timing_eq /occs_merge_never_left. Qed.
 
+Theorem stream_timing_merge_never_right a f (s : stream a) : stream_timing (merge s (never a) f) = stream_timing s.
+Proof. by apply /occs_eq_to_timing_eq /occs_merge_never_right. Qed.
 
 
 

@@ -1,6 +1,6 @@
 
 From Stdlib Require Import ssreflect.
-From CoqFRP Require Import FRP Primitive Timing.
+From CoqFRP Require Import FRP Timing.
 
 (* 
 // map, snapshot, merge, neverを含む例
@@ -41,8 +41,7 @@ Theorem T1 : different_timing (stream_timing sA2) (stream_timing sB2).
 rewrite /sA2 /sB2.
 rewrite stream_timing_snapshot.
 rewrite stream_timing_map_s.
-rewrite /stream_timing.
-rewrite occs_merge_never_right.
+rewrite stream_timing_merge_never_right.
 apply Hy1.
 Qed.
 
@@ -59,9 +58,7 @@ Theorem T3 : subset_timing (stream_timing sB1) (stream_timing sC1).
 rewrite /sC1.
 rewrite /sA2 /sB2.
 apply subset_timing_is_transitive with (b := stream_timing (merge sB1 (never a) f3)).
-- rewrite (occs_eq_to_timing_eq (merge sB1 (never a) f3) sB1).
-  + by apply occs_merge_never_right.
-  + apply subset_timing_is_reflective.
+- by rewrite stream_timing_merge_never_right.
 - by apply merge_subset_timing_right.
 Qed.
 

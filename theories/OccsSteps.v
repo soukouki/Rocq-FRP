@@ -302,6 +302,8 @@ case_eq (tf2 ?= tp2) => H2.
     by apply IHcp2.
 Qed.
 
+Lemma occs_map_never a b (f : a -> b) : occs (map_s f (never a)) = occs (never b).
+Proof. by []. Qed.
 
 
 

@@ -138,13 +138,77 @@ move => H1.
 by rewrite is_asc_timing_to_coalesce_eq.
 Qed.
 
+Lemma is_asc_timing_ignore_head_value a (s0 : str a) t0 a0 b0 :
+  is_asc_timing ((t0, a0) :: s0) = true ->
+  is_asc_timing ((t0, b0) :: s0) = true.
+Proof.
+by case s0.
+Qed.
+
+Lemma is_asc_timing_skip a t0 a0 t1 a1 (s1 : str a) :
+  is_asc_timing ((t0, a0) :: (t1, a1) :: s1) = true ->
+  is_asc_timing ((t0, a0) :: s1) = true.
+Proof.
+move => H1.
+rewrite /=.
+rewrite /= Bool.andb_true_iff in H1.
+case H1 => H2 H3.
+move : H3.
+case s1 => [ | [t2 a2] s2 ] => // H3.
+rewrite Bool.andb_true_iff in H3.
+case H3 => H4 H5.
+rewrite Bool.andb_true_iff.
+split => //.
+rewrite ltb_lt.
+rewrite 2!ltb_lt in H2 H4.
+by apply (lt_trans _ t1).
+Qed.
+
 Lemma coalesce_min_le a (f : a -> a -> a) ta0 a0 sa0 tb0 b0 sb0 :
   is_asc_timing ((ta0, a0) :: sa0) = true ->
   is_asc_timing ((tb0, b0) :: sb0) = true ->
   ta0 <= tb0 ->
   coalesce f ((ta0, a0) :: occs_knit (sa0, sb0)) = (ta0, a0) :: coalesce f(occs_knit (sa0, sb0)).
 Proof.
-Admitted.
+move => H1 H2 H3.
+move : H1.
+case sa0 => [ | [ta1 a1] sa1 ] => H1.
+  rewrite occs_knit_nil_left.
+  move : H2.
+  case sb0 => [ | [tb1 b1] sb1 ] => H2.
+    by rewrite coalesce_equation.
+  rewrite coalesce_equation.
+  suff : ta0 =? tb1 = false => [ -> // | ].
+  rewrite eqb_neq.
+  apply lt_neq.
+  apply (le_lt_trans _ tb0) => //.
+  apply is_asc_timing_first_lt in H2.
+  by rewrite ltb_lt in H2.
+move : H2.
+case sb0 => [ | [tb1 b1] sb1 ] => H2.
+  rewrite occs_knit_nil_right.
+  rewrite coalesce_equation.
+  suff : ta0 =? ta1 = false => [ -> // | ].
+  rewrite eqb_neq.
+  apply lt_neq.
+  apply is_asc_timing_first_lt in H1.
+  by rewrite ltb_lt in H1.
+rewrite occs_knit_equation.
+case (ta1 <=? tb1).
+- rewrite coalesce_equation.
+  suff : ta0 =? ta1 = false => [ -> // | ].
+  apply is_asc_timing_first_lt in H1.
+  rewrite ltb_lt in H1.
+  rewrite eqb_neq.
+  by apply lt_neq.
+- rewrite coalesce_equation.
+  suff : ta0 =? tb1 = false => [ -> // | ].
+  rewrite eqb_neq.
+  apply lt_neq.
+  apply (le_lt_trans _ tb0) => //.
+  apply is_asc_timing_first_lt in H2.
+  by rewrite ltb_lt in H2.
+Qed.
 
 Lemma coalesce_min_lt_right a (f : a -> a -> a) ta0 a0 sa0 tb0 b0 sb0 :
   is_asc_timing ((ta0, a0) :: sa0) = true ->
@@ -152,15 +216,55 @@ Lemma coalesce_min_lt_right a (f : a -> a -> a) ta0 a0 sa0 tb0 b0 sb0 :
   ta0 < tb0 ->
   coalesce f ((ta0, a0) :: occs_knit (sa0, (tb0, b0) :: sb0)) = (ta0, a0) :: coalesce f(occs_knit (sa0, (tb0, b0) :: sb0)).
 Proof.
-Admitted.
+move => H1 H2 H3.
+move : H1.
+case sa0 => [ | [ta1 a1] sa1 ] => H1.
+  rewrite occs_knit_nil_left.
+  rewrite coalesce_equation.
+  suff : ta0 =? tb0 = false => [ -> // | ].
+  rewrite eqb_neq.
+  by apply lt_neq.
+rewrite occs_knit_equation.
+case (ta1 <=? tb0).
+- rewrite coalesce_equation.
+  suff : ta0 =? ta1 = false => [ -> // | ].
+  rewrite eqb_neq.
+  apply lt_neq.
+  apply is_asc_timing_first_lt in H1.
+  by rewrite ltb_lt in H1.
+- rewrite coalesce_equation.
+  suff : ta0 =? tb0 = false => [ -> // | ].
+  rewrite eqb_neq.
+  by apply lt_neq.
+Qed.
 
 Lemma coalesce_min_lt_left a (f : a -> a -> a) ta0 a0 sa0 tb0 b0 sb0 :
   is_asc_timing ((ta0, a0) :: sa0) = true ->
   is_asc_timing ((tb0, b0) :: sb0) = true ->
   tb0 < ta0 ->
-  coalesce f ((tb0, b0) :: occs_knit ((ta0, a0) :: sa0, sb0)) = (ta0, a0) :: coalesce f(occs_knit ((ta0, a0) :: sa0, sb0)).
+  coalesce f ((tb0, b0) :: occs_knit ((ta0, a0) :: sa0, sb0)) = (tb0, b0) :: coalesce f(occs_knit ((ta0, a0) :: sa0, sb0)).
 Proof.
-Admitted.
+move => H1 H2 H3.
+move : H2.
+case sb0 => [ | [tb1 b1] sb1 ] => H2.
+  rewrite occs_knit_nil_right.
+  rewrite coalesce_equation.
+  suff : tb0 =? ta0 = false => [ -> // | ].
+  rewrite eqb_neq.
+  by apply lt_neq.
+rewrite occs_knit_equation.
+case (ta0 <=? tb1).
+- rewrite coalesce_equation.
+  suff : tb0 =? ta0 = false => [ -> // | ].
+  rewrite eqb_neq.
+  by apply lt_neq.
+- rewrite coalesce_equation.
+  suff : tb0 =? tb1 = false => [ -> // | ].
+  rewrite eqb_neq.
+  apply lt_neq.
+  apply is_asc_timing_first_lt in H2.
+  by rewrite ltb_lt in H2.
+Qed.
 
 Lemma occs_knit_min a ta0 a0 sa0 tb0 (b0 : a) sb0 :
   is_asc_timing ((ta0, a0) :: sa0) = true ->
@@ -168,6 +272,35 @@ Lemma occs_knit_min a ta0 a0 sa0 tb0 (b0 : a) sb0 :
   ta0 <= tb0 ->
   occs_knit (sa0, (tb0, b0) :: sb0) = (tb0, b0) :: occs_knit (sa0, sb0).
 Proof.
+move : ta0 a0 sa0 tb0 b0.
+induction sb0 as [ | [tb1 b1] sb1 ] => ta0 a0 sa0 tb0 b0 H1 H2 H3.
+- rewrite occs_knit_nil_right.
+  move : sa0 ta0 a0 tb0 b0 H1 H2 H3.
+  induction sa0 as [ | [ta1 a1] sa1 ] => ta0 a0 tb0 b0 H1 H2 H3.
+  + by rewrite occs_knit_nil_left.
+  + rewrite occs_knit_equation.
+    case (ta1 <=? tb0).
+Restart.
+move => H1 H2 H3.
+move : ta0 a0 tb0 b0 sb0 H1 H2 H3.
+induction sa0 as [ | [ta1 a1] sa1 ] => ta0 a0 tb0 b0 sb0 H1 H2 H3.
+  by rewrite 2!occs_knit_nil_left.
+rewrite occs_knit_equation.
+case (ta1 <=? tb0).
+- rewrite (IHsa1 ta0 a0) => //.
+    by apply is_asc_timing_skip in H1.
+  rewrite [occs_knit ((ta1, a1) :: sa1, sb0)]occs_knit_equation.
+  move : sb0 H2.
+  case => [ | [tb1 b1] sb1 ] => H2.
+    rewrite occs_knit_nil_right.
+    rewrite app_nil_r.
+Restart.
+move => H1 H2 H3.
+move : a0 b0 sb0 H1 H2.
+induction sa0 as [ | [ta1 a1] sa1 ] => a0 b0 sb0 H1 H2.
+  by rewrite 2!occs_knit_nil_left.
+rewrite occs_knit_equation.
+
 Admitted.
 
 Lemma is_asc_timing_min_coalesce_occs_knit a (f : a -> a -> a) (t1 ta2 : time) (a1 a2 b1 : a) (sa2 sb1 : str a) :
@@ -180,15 +313,19 @@ Admitted.
 Lemma coalesce_occs_knit_exists_right a (f : a -> a -> a) (ta1 tb1 : time) (a1 b1 : a) (sa1 sb1 : str a) :
   is_asc_timing ((ta1, a1) :: sa1) = true ->
   is_asc_timing ((tb1, b1) :: sb1) = true ->
+  ta1 < tb1 ->
   exists tm1 m1 sm1,
     coalesce f (occs_knit (sa1, (tb1, b1) :: sb1)) = (tm1, m1) :: sm1 /\ ta1 < tm1.
+Proof.
 Admitted.
 
 Lemma coalesce_occs_knit_exists_left a (f : a -> a -> a) (ta1 tb1 : time) (a1 b1 : a) (sa1 sb1 : str a) :
   is_asc_timing ((ta1, a1) :: sa1) = true ->
   is_asc_timing ((tb1, b1) :: sb1) = true ->
+  tb1 < ta1 ->
   exists tm1 m1 sm1,
-    coalesce f (occs_knit ((ta1, a1) :: sa1, sb1)) = (tm1, m1) :: sm1 /\ ta1 < tm1.
+    coalesce f (occs_knit ((ta1, a1) :: sa1, sb1)) = (tm1, m1) :: sm1 /\ tb1 < tm1.
+Proof.
 Admitted.
 
 Lemma is_asc_timing_merge a (sa sb : stream a) (f : a -> a -> a) :
@@ -230,7 +367,7 @@ case_eq (ta1 ?= tb1) => H3.
   + clear IHsb1 IHsa1 H3'.
     rewrite (@coalesce_min_lt_right _ _ _ _ _ tb1 b1) => //.
     rewrite /= H4; clear H4.
-    move : (coalesce_occs_knit_exists_right f _ _ _ _ _ _ H1 H2) => [tm1] [m1] [sm1] [H4 H5].
+    move : (coalesce_occs_knit_exists_right f _ _ _ _ H1 H2 H3) => [tm1] [m1] [sm1] [H4 H5].
     rewrite H4.
     rewrite Bool.andb_true_r.
     by rewrite ltb_lt.
@@ -263,7 +400,7 @@ case_eq (ta1 ?= tb1) => H3.
     rewrite /=.
     rewrite H4.
     clear IHsb1 IHsa1 H4.
-    move : (coalesce_occs_knit_exists_left f _ _ _ _ _ _ H1 H2) => [tm1] [m1] [sm1] [H4 H5].
+    move : (coalesce_occs_knit_exists_left f _ _ _ _ H1 H2 H3) => [tm1] [m1] [sm1] [H4 H5].
     rewrite H4.
     rewrite Bool.andb_true_r.
     by rewrite ltb_lt.
@@ -311,15 +448,15 @@ Qed.
 
 (*
 (* 使いそうと思ったが意外と使わなかった補題 *)
-Lemma is_asc_timing_steps_hold a (a0 : a) (s : stream a) :
+Lemma is_asc_timing_hold a (a0 : a) (s : stream a) :
   is_asc_timing (snd (steps (hold a0 s))) = true.
 Admitted.
 
-Lemma is_asc_timing_steps_map_c a b (f : a -> b) (c : cell a) :
+Lemma is_asc_timing_map_c a b (f : a -> b) (c : cell a) :
   is_asc_timing (snd (steps (map_c f c))) = true.
 Admitted.
 
-Lemma is_asc_timing_steps_apply a b (c1 : cell (a -> b)) (c2 : cell a) :
+Lemma is_asc_timing_apply a b (c1 : cell (a -> b)) (c2 : cell a) :
   is_asc_timing (snd (steps (apply c1 c2))) = true.
 Admitted.
 
@@ -328,9 +465,9 @@ Lemma is_asc_timing_steps a (c : cell a) :
 Proof.
 induction c.
 - by [].
-- by apply is_asc_timing_steps_hold.
-- by apply is_asc_timing_steps_map_c.
-- by apply is_asc_timing_steps_apply.
+- by apply is_asc_timing_hold.
+- by apply is_asc_timing_map_c.
+- by apply is_asc_timing_apply.
 Qed.
  *)
 
