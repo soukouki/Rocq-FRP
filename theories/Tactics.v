@@ -4,10 +4,7 @@ From Stdlib Require Import ssreflect.
 From CoqFRP Require Import FRP .
 From Ltac2 Require Import Ltac2 Init Std Message.
 
-Definition Test := list nat.
-Hint Unfold Test : frp.
-
-Ltac2 foo_ () := 
+Ltac2 foo_ () := print (of_string "test").
 Ltac2 Notation foo := foo_ ().
 
 Goal forall A B : Prop, A -> B -> (A->B).

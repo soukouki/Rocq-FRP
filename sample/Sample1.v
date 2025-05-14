@@ -31,20 +31,19 @@ Hypothesis Hy1 : different_timing (stream_timing sA1) (stream_timing sB1).
 Variable f1 : a -> a.
 Variable f2 : a -> a -> a.
 Definition sA2 := snapshot f2 (map_s f1 sA1) cFlag.
-Hint Unfold sA2 : frp.
 
 Variable f3 : a -> a -> a.
 Definition sB2 := merge sB1 (never a) f3.
-Hint Unfold sB2 : frp.
 
 Variable f4 : a -> a -> a.
 Definition sC1 := merge sA2 sB2 f4.
-Hint Unfold sC1 : frp.
 
 Theorem T1 : different_timing (stream_timing sA2) (stream_timing sB2).
-autounfold with frp.
-autorewrite with frp.
-auto with frp.
+rewrite /sA2 /sB2.
+rewrite stream_timing_snapshot.
+rewrite stream_timing_map_s.
+rewrite stream_timing_merge_never_right.
+apply Hy1.
 Qed.
 
 Theorem T2 : subset_timing (stream_timing sA1) (stream_timing sC1).
@@ -59,15 +58,6 @@ apply subset_timing_is_transitive with (b := stream_timing (snapshot f2 (map_s f
 - rewrite stream_timing_snapshot.
   by rewrite stream_timing_map_s.
 - by apply merge_subset_timing_left.
-Restart.
-autounfold with frp.
-auto with frp. (* 何も起こらない！ *)
-Restart.
-autounfold with frp.
-auto with frp.
-have : subset_timing (stream_timing sA1) (stream_timing (snapshot f2 (map_s f1 sA1) cFlag)).
-  by autorewrite with frp.
-auto with frp.
 Qed.
 
 Theorem T3 : subset_timing (stream_timing sB1) (stream_timing sC1).
