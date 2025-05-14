@@ -1,3 +1,4 @@
+Set Implicit Arguments.
 
 From Stdlib Require Import ssreflect.
 From CoqFRP Require Import FRP Timing.
