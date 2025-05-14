@@ -367,19 +367,16 @@ case_eq (ta1 ?= tb1) => H3.
   rewrite (occs_knit_min _ _ _ _ _ H1 H2) => //.
   rewrite coalesce_equation.
   rewrite eqb_refl.
-  move : sa1 tb1 a1 b1 sb1 IHsa1 H1.
-  induction sa1 as [ | [ta2 a2] sa2 ] => IHsa1 H1.
+  move : (f a1 b1) => c.
+  (* clear IHsa1 IHsb1. *)
+  move : tb1 b1 sb1 a1 c H1 H2 IHsa1 IHsb1.
+  induction sa1 as [ | [ta2 a2] sa2 ] => tb1 b1 sb1 a1 c H1 H2 IHsa1 IHsb1.
     rewrite occs_knit_nil_left.
-    by apply is_asc_timing_coalesce.
-  rewrite (@coalesce_min_le a f tb1 (f a1 b1) ((ta2, a2) :: sa2) tb1 b1 sb1) => //.
+    apply is_asc_timing_coalesce.
+    by apply is_asc_timing_ignore_head_value with (a0 := b1).
+  rewrite (@coalesce_min_le _ f _ _ _ tb1 b1) => //.
   rewrite /=.
-  rewrite IHsb1 => //.
-  + move => H3 H4.
-    
-  + by apply is_asc_timing_tail in H1.
-  + by apply is_asc_timing_tail in H2.
-  + admit.
-
+  admit.
 
 
 
@@ -434,7 +431,7 @@ case_eq (ta1 ?= tb1) => H3.
     rewrite H4.
     rewrite Bool.andb_true_r.
     by rewrite ltb_lt.
-Qed.
+Admitted.
 
 Lemma filter_eq a (f : a -> bool) (a0 : a) (s0 : list a) :
   List.filter f (a0 :: s0) = if f a0 then a0 :: List.filter f s0 else List.filter f s0.
