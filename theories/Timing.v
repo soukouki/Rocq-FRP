@@ -4,18 +4,23 @@ From Stdlib Require Import ssreflect.
 From Stdlib Require Import List PeanoNat.
 From CoqFRP Require Import FRP OccsSteps AscTiming Primitive.
 
+Create HintDb frp.
+
 Definition timing := list time.
 
 Definition same_timing (a b : timing) := a = b.
 
-Theorem same_timing_reflective a : same_timing a a.
+Theorem same_timing_is_reflective a : same_timing a a.
 Proof. by []. Qed.
+Hint Resolve same_timing_is_reflective : frp.
 
 Theorem same_timing_is_transitive a b c : same_timing a b -> same_timing b c -> same_timing a c.
 Proof. move => H1 H2; apply (eq_trans H1 H2). Qed.
+Hint Resolve same_timing_is_transitive : frp.
 
 Theorem same_timing_is_commutative a b : same_timing a b -> same_timing b a.
 Proof. move => H1; symmetry; exact H1. Qed.
+Hint Resolve same_timing_is_commutative : frp.
 
 Definition different_timing (a b : timing) := forall t, In t a <> In t b.
 
@@ -24,9 +29,11 @@ Definition subset_timing (a b : timing) := forall t, In t a -> In t b.
 
 Theorem subset_timing_is_reflective a : subset_timing a a.
 Proof. by []. Qed.
+Hint Resolve subset_timing_is_reflective : frp.
 
 Theorem subset_timing_is_transitive a b c : subset_timing a b -> subset_timing b c -> subset_timing a c.
 Proof. move => H1 H2 t H3; by apply /H2 /H1. Qed.
+Hint Resolve subset_timing_is_transitive : frp.
 
 Definition stream_timing a (s : stream a) : timing := map fst (occs s).
 
@@ -40,6 +47,7 @@ rewrite /stream_timing /=.
 induction (occs s) => //=.
 by rewrite IHs0.
 Qed.
+Hint Rewrite stream_timing_map_s : frp.
 
 Theorem stream_timing_snapshot a1 a2 a3 (f : a1 -> a2 -> a3) (s : stream a1) (c : cell a2) : stream_timing (snapshot f s c) = stream_timing s.
 Proof.
@@ -47,6 +55,7 @@ rewrite /stream_timing /=.
 induction (occs s) => //=.
 by rewrite IHs0.
 Qed.
+Hint Rewrite stream_timing_snapshot : frp.
 
 Theorem merge_subset_timing_left a (f : a -> a -> a) (s1 s2 : stream a) : subset_timing (stream_timing s1) (stream_timing (merge s1 s2 f)).
 Proof.
@@ -67,6 +76,7 @@ case (occs s2) as [ | [t2_1 a2_1] s2_1 ] => [ | t' H2 ].
   + apply coalesce_in_tail.
     by apply occs_knit_in_left.
 Qed.
+Hint Resolve merge_subset_timing_left : frp.
 
 Theorem merge_subset_timing_right a (f : a -> a -> a) (s1 s2 : stream a) :
   subset_timing (stream_timing s2) (stream_timing (merge s1 s2 f)).
@@ -88,6 +98,7 @@ case (occs s1) as [ | [t1_1 a1_1] s1_1 ] => [ | t' H2 ].
     * apply coalesce_in_tail.
       by apply occs_knit_in_right.
 Qed.
+Hint Resolve merge_subset_timing_right : frp.
 
 Theorem filter_subset_timing a b (f : a -> bool) (s1 : stream a) (s2 : stream b) :
   same_timing (stream_timing s1) (stream_timing s2) ->
@@ -105,6 +116,7 @@ case (f a1) => /= H1.
 - right.
   by apply IHs1.
 Qed.
+Hint Resolve filter_subset_timing : frp.
 
 (* 
 coalesceが結論に出てくる。
@@ -128,6 +140,7 @@ have : (t1 =? t2) = false => [ | -> /= ].
 - rewrite IHs1 => //.
   by apply is_asc_timing_tail in H1.
 Qed.
+Hint Rewrite cell_timing_hold : frp.
 
 Theorem cell_timing_map_c a b (f : a -> b) (c : cell a) : cell_timing (map_c f c) = cell_timing c.
 Proof.
@@ -137,6 +150,7 @@ induction c0 as [ | [t1 a1] c1 ] => //=.
 rewrite /= in IHc1.
 by rewrite IHc1.
 Qed.
+Hint Rewrite cell_timing_map_c : frp.
 
 Theorem apply_subset_timing_left p b (cf : cell (p -> b)) (cp : cell p) : subset_timing (cell_timing cf) (cell_timing (apply cf cp)).
 Proof.
@@ -145,6 +159,7 @@ move : (steps cf) (steps cp) => [f0 cf0] [p0 cp0]; clear cf cp.
 move => t H1.
 by apply steps_knit_in_left.
 Qed.
+Hint Resolve apply_subset_timing_left : frp.
 
 Theorem apply_subset_timing_right p a (cf : cell (p -> a)) (cp : cell p) : subset_timing (cell_timing cp) (cell_timing (apply cf cp)).
 rewrite /cell_timing /=.
@@ -152,6 +167,7 @@ move : (steps cf) (steps cp) => [f0 cf0] [p0 cp0]; clear cf cp.
 move => t H1.
 by apply steps_knit_in_right.
 Qed.
+Hint Resolve apply_subset_timing_right : frp.
 
 Theorem cell_timing_apply_constant_left p a (fcons : p -> a) (c : cell p) :
   cell_timing (apply (constant fcons) c) = cell_timing c.
@@ -165,6 +181,7 @@ rewrite steps_knit_equation /=.
 rewrite -IHcp1; clear IHcp1.
 by rewrite 2!steps_knit_equation.
 Qed.
+Hint Rewrite cell_timing_apply_constant_left : frp.
 
 Theorem cell_timing_apply_constant_right p a (acons : p) (c : cell (p -> a)) :
   cell_timing (apply c (constant acons)) = cell_timing c.
@@ -178,6 +195,7 @@ rewrite steps_knit_equation /=.
 rewrite -IHcf1; clear IHcf1.
 by rewrite 2!steps_knit_equation.
 Qed.
+Hint Rewrite cell_timing_apply_constant_right : frp.
 
 (* Primitiveにある補題をTimingを使った形に変換する *)
 
@@ -186,10 +204,11 @@ Proof. move => H1; by rewrite /stream_timing H1. Qed.
 
 Theorem stream_timing_merge_never_left a f (s : stream a) : stream_timing (merge (never a) s f) = stream_timing s.
 Proof. by apply /occs_eq_to_timing_eq /occs_merge_never_left. Qed.
+Hint Rewrite stream_timing_merge_never_left : frp.
 
 Theorem stream_timing_merge_never_right a f (s : stream a) : stream_timing (merge s (never a) f) = stream_timing s.
 Proof. by apply /occs_eq_to_timing_eq /occs_merge_never_right. Qed.
-
+Hint Rewrite stream_timing_merge_never_right : frp.
 
 
 
