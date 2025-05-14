@@ -100,6 +100,26 @@ case (occs s1) as [ | [t1_1 a1_1] s1_1 ] => [ | t' H2 ].
 Qed.
 Hint Resolve merge_subset_timing_right : frp.
 
+(* 使いやすくするためにsubset_timing_is_transitiveと合わせた補題 *)
+Lemma subset_timing_merge_left a (t1 : timing) (s1 s2 : stream a) (f : a -> a -> a) :
+  subset_timing t1 (stream_timing s1) ->
+  subset_timing t1 (stream_timing (merge s1 s2 f)).
+Proof.
+move => H1.
+apply subset_timing_is_transitive with (b := stream_timing s1) => //.
+by apply merge_subset_timing_left.
+Qed.
+Hint Resolve subset_timing_merge_left : frp.
+
+Lemma subset_timing_merge_right a (t1 : timing) (s1 s2 : stream a) (f : a -> a -> a) :
+  subset_timing t1 (stream_timing s2) ->
+  subset_timing t1 (stream_timing (merge s1 s2 f)).
+Proof.
+move => H1.
+apply subset_timing_is_transitive with (b := stream_timing s2) => //.
+by apply merge_subset_timing_right.
+Qed.
+Hint Resolve subset_timing_merge_right : frp.
 Theorem filter_subset_timing a b (f : a -> bool) (s1 : stream a) (s2 : stream b) :
   same_timing (stream_timing s1) (stream_timing s2) ->
   subset_timing (stream_timing (filter f s1)) (stream_timing s2).

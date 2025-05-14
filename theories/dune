@@ -2,5 +2,8 @@
 (coq.theory
   (name CoqFRP)
   (synopsis "Automatic proof of FRP programmes using Coq.")
-  (flags (-R "/home/%{env:USER=}/.opam/default/lib/coq/user-contrib/Stdlib" Stdlib))
+  (flags
+    (-R "/home/%{env:USER=}/.opam/default/lib/coq/user-contrib/Stdlib" Stdlib)
+    (-R "/home/%{env:USER=}/.opam/default/lib/coq/user-contrib/Ltac2" Ltac2)
+  )
 )

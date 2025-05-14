@@ -1,7 +1,7 @@
 Set Implicit Arguments.
 
 From Stdlib Require Import ssreflect.
-From CoqFRP Require Import FRP Timing.
+From CoqFRP Require Import FRP Timing Tactics.
 
 (* 
 // map, snapshot, merge, neverを含む例
@@ -17,26 +17,6 @@ public class Sample1 {
 	}
 }
  *)
-
-Lemma subset_timing_merge_left a (t1 : timing) (s1 s2 : stream a) (f : a -> a -> a) :
-  subset_timing t1 (stream_timing s1) ->
-  subset_timing t1 (stream_timing (merge s1 s2 f)).
-Proof.
-move => H1.
-apply subset_timing_is_transitive with (b := stream_timing s1) => //.
-by apply merge_subset_timing_left.
-Qed.
-Hint Resolve subset_timing_merge_left : frp.
-
-Lemma subset_timing_merge_right a (t1 : timing) (s1 s2 : stream a) (f : a -> a -> a) :
-  subset_timing t1 (stream_timing s2) ->
-  subset_timing t1 (stream_timing (merge s1 s2 f)).
-Proof.
-move => H1.
-apply subset_timing_is_transitive with (b := stream_timing s2) => //.
-by apply merge_subset_timing_right.
-Qed.
-Hint Resolve subset_timing_merge_right : frp.
 
 Section Sample1_Sample1.
 
@@ -64,10 +44,15 @@ Hint Unfold sC1 : frp.
 Theorem T1 : different_timing (stream_timing sA2) (stream_timing sB2).
 autounfold with frp.
 autorewrite with frp.
-eauto with frp.
+auto with frp.
 Qed.
 
 Theorem T2 : subset_timing (stream_timing sA1) (stream_timing sC1).
+Proof Mode "Ltac2".
+foo.
+Proof Mode "Classic".
+
+autounfold with frp.
 rewrite /sC1.
 rewrite /sA2 /sB2.
 apply subset_timing_is_transitive with (b := stream_timing (snapshot f2 (map_s f1 sA1) cFlag)).
