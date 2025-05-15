@@ -291,22 +291,6 @@ apply is_asc_timing_head_lt in H1.
 by rewrite leb_nle -lt_nge.
 Qed.
 
-Lemma is_asc_timing_min_coalesce_occs_knit a (f : a -> a -> a) (t1 : time) (a1 b1 : a) (sa2 sb1 : str a) :
-  is_asc_timing ((t1, a1) :: sa2) = true ->
-  is_asc_timing ((t1, b1) :: sb1) = true ->
-  is_asc_timing ((t1, f a1 b1) :: coalesce f (occs_knit (sa2, sb1))) = true.
-Proof.
-move => H1 H2.
-apply is_asc_timing_head.
-- apply is_asc_timing_tail in H1.
-  apply is_asc_timing_tail in H2; clear t1 a1 a1 b1.
-  move : H1 H2. (* これis_asc_timing_mergeとほとんど一緒！だめ！ *)
-Restart.
-
-
-
-Admitted.
-
 Lemma coalesce_occs_knit_exists_right a (f : a -> a -> a) (ta1 tb1 : time) (a1 b1 : a) (sa1 sb1 : str a) :
   is_asc_timing ((ta1, a1) :: sa1) = true ->
   is_asc_timing ((tb1, b1) :: sb1) = true ->
@@ -324,14 +308,14 @@ induction sa1 as [ | [ta2 a2] sa2 ] => ta1 a1 tb1 b1 sb1 H1 H2 H3.
 rewrite occs_knit_equation.
 case (ta2 <=? tb1).
 - exists ta2.
-  exists a2.
+  exists a2. (* もっとIHsa2を使えば証明できそうかも *)
   exists (occs_knit (sa2, (tb1, b1) :: sb1)).
   split.
   + move : (IHsa2 ta1 a1 tb1 b1 sb1) => H4.
     case H4 => // [ | tm1 [m1] [sm1] ].
       by apply is_asc_timing_skip in H1.
     case => H5 H6.
-    
+    Search list.
 
 
 Admitted.
@@ -345,6 +329,35 @@ Lemma coalesce_occs_knit_exists_left a (f : a -> a -> a) (ta1 tb1 : time) (a1 b1
 Proof.
 Admitted.
 
+Lemma coalesce_occs_knit_or a (f : a -> a -> a) (t1 : time) (a1 b1 : a) (sa1 sb1 : str a) :
+  is_asc_timing ((t1, a1) :: sa1) = true ->
+  is_asc_timing ((t1, b1) :: sb1) = true ->
+  coalesce f (occs_knit (sa1, sb1)) = nil \/ exists tm1 m1 sm1, coalesce f (occs_knit (sa1, sb1)) = (tm1, m1) :: sm1 /\ t1 < tm1.
+Proof.
+Admitted.
+
+(* 
+list_ind:
+  forall [A : Type] (P : list A -> Prop),
+  P [] ->
+  (forall (a : A) (l : list A), P l -> P (a :: l)) ->
+  forall l : list A, P l
+ *)
+
+Lemma double_induction_list a b (P : list a -> list b -> Prop) :
+  (forall sa, P sa []) ->
+  (forall sb, P [] sb) ->
+  (forall sa1 sb1, (forall a1, P (a1 :: sa1) sb1) -> (forall b1, P sa1 (b1 :: sb1)) -> P sa1 sb1 -> forall a1 b1, P (a1 :: sa1) (b1 :: sb1)) ->
+  forall sa sb, P sa sb.
+Proof.
+move => H1 H2 H3.
+induction sa as [ | a1 sa1 ] => // sb.
+move : a1 sa1 IHsa1.
+induction sb as [ | b1 sb1 ] => // a1 sa1 IHsa1.
+apply H3 => // a0.
+by apply IHsb1.
+Qed.
+
 Lemma is_asc_timing_merge a (sa sb : stream a) (f : a -> a -> a) :
   is_asc_timing (occs sa) = true ->
   is_asc_timing (occs sb) = true ->
@@ -352,86 +365,60 @@ Lemma is_asc_timing_merge a (sa sb : stream a) (f : a -> a -> a) :
 Proof.
 rewrite /=.
 move : (occs sa) (occs sb) => sa0 sb0; clear sa sb.
-induction sa0 as [ | [ta1 a1] sa1 ] => H1 H2; try clear sa0.
-  rewrite occs_knit_nil_left.
-  by apply is_asc_timing_coalesce.
-move : ta1 a1 sa1 IHsa1 H1 H2.
-induction sb0 as [ | [tb1 b1] sb1 ] => ta1 a1 sa1 IHsa1 H1 H2.
+apply (double_induction_list (fun sa' sb' => is_asc_timing sa' = true -> is_asc_timing sb' = true -> is_asc_timing (coalesce f (occs_knit (sa', sb'))) = true)).
+- move => sa H1 H2.
   rewrite occs_knit_nil_right.
   by apply is_asc_timing_coalesce.
-rewrite occs_knit_equation.
-case_eq (ta1 ?= tb1) => H3.
-- apply compare_eq in H3.
-  subst.
-  rewrite leb_refl.
-  rewrite (occs_knit_min _ _ _ _ _ H1 H2) => //.
-  rewrite coalesce_equation.
-  rewrite eqb_refl.
-  move : (f a1 b1) => c.
-  (* clear IHsa1 IHsb1. *)
-  move : tb1 b1 sb1 a1 c H1 H2 IHsa1 IHsb1.
-  induction sa1 as [ | [ta2 a2] sa2 ] => tb1 b1 sb1 a1 c H1 H2 IHsa1 IHsb1.
-    rewrite occs_knit_nil_left.
-    apply is_asc_timing_coalesce.
-    by apply is_asc_timing_ignore_head_value with (a0 := b1).
-  rewrite (@coalesce_min_le _ f _ _ _ tb1 b1) => //.
-  rewrite /=.
-  admit.
-
-
-
-
-
-
-- rewrite compare_lt_iff in H3.
-  move : (H3) => H3'.
-  apply lt_le_incl in H3'.
-  rewrite -leb_le in H3'.
-  rewrite H3'.
-  have : is_asc_timing (coalesce f (occs_knit (sa1, (tb1, b1) :: sb1))) = true => [ | H4 ].
-  + apply IHsa1 => //.
-    by apply is_asc_timing_tail in H1.
-  + clear IHsb1 IHsa1 H3'.
+- move => sb H1 H2.
+  rewrite occs_knit_nil_left.
+  by apply is_asc_timing_coalesce.
+- move => sa1 sb1 H1 H2 H3 [ta1 a1] [tb1 b1] H4 H5.
+  case_eq (ta1 ?= tb1) => H6.
+  + rewrite compare_eq_iff in H6.
+    subst.
+    rewrite occs_knit_equation.
+    rewrite leb_refl.
+    rewrite (occs_knit_min _ _ _ _ _ H4 H5) => //.
+    rewrite coalesce_equation.
+    rewrite eqb_refl.
+    rewrite (@coalesce_min_le _ f _ _ _ tb1 b1) => //.
+    have : is_asc_timing (coalesce f (occs_knit (sa1, sb1))) = true => [ | H6 ].
+      apply H3; by [ apply is_asc_timing_tail in H4 | apply is_asc_timing_tail in H5 ].
+    rewrite /= H6.
+    move : (coalesce_occs_knit_or f _ _ _ _ _ H4 H5).
+    case => [ -> // | H7 ].
+    move : H7 => [tm1] [m1] [sm1] [H8 H9].
+    rewrite H8.
+    rewrite Bool.andb_true_r.
+    by rewrite ltb_lt.
+  + rewrite compare_lt_iff in H6.
+    rewrite occs_knit_equation.
+    have : ta1 <=? tb1 = true => [ | -> ].
+      rewrite leb_le.
+      by apply lt_le_incl.
     rewrite (@coalesce_min_lt_right _ _ _ _ _ tb1 b1) => //.
-    rewrite /= H4; clear H4.
-    move : (coalesce_occs_knit_exists_right f _ _ _ _ H1 H2 H3) => [tm1] [m1] [sm1] [H4 H5].
-    rewrite H4.
+    have : is_asc_timing (coalesce f (occs_knit (sa1, (tb1, b1) :: sb1))) = true => [ | H7 ].
+      apply H2 => //.
+      by apply is_asc_timing_tail in H4.
+    rewrite /= H7.
+    move : (coalesce_occs_knit_exists_right f _ _ _ _ H4 H5 H6) => [tm1] [m1] [sm1] [H8 H9].
+    rewrite H8.
     rewrite Bool.andb_true_r.
     by rewrite ltb_lt.
-- rewrite compare_gt_iff in H3.
-  move : (H3) => H3'.
-  rewrite lt_nge in H3'.
-  rewrite -leb_nle in H3'.
-  rewrite H3'; clear H3'.
-  have : is_asc_timing (coalesce f (occs_knit ((ta1, a1) :: sa1, sb1))) = true => [ | H4 ].
-  + apply IHsb1 => //.
-    * move => H1' H2'.
-      clear IHsa1.
-      move : sa1 H1 H1'.
-      induction sa1 as [ | [ta2 a2] sa2 ] => H1 H1'.
-      -- rewrite occs_knit_nil_left.
-         by rewrite is_asc_timing_coalesce.
-      -- apply IHsb1 => // H1'' H2''.
-         apply IHsa2 => //.
-         clear IHsb1 IHsa2 H1' H1'' H2 H2' H2'' H3.
-         move : H1 => /=.
-         case sa2 => [ | [ta3 a3] sa3 ] => //.
-         rewrite 3!Bool.andb_true_iff.
-         move => [H4 [H5 H6]].
-         split => //.
-         rewrite ltb_lt.
-         rewrite 2!ltb_lt in H4 H5.
-         by apply (lt_trans _ _ _ H4 H5).
-    * by apply is_asc_timing_tail in H2.
-  + rewrite coalesce_min_lt_left => //.
-    rewrite /=.
-    rewrite H4.
-    clear IHsb1 IHsa1 H4.
-    move : (coalesce_occs_knit_exists_left f _ _ _ _ H1 H2 H3) => [tm1] [m1] [sm1] [H4 H5].
-    rewrite H4.
+  + rewrite compare_gt_iff in H6.
+    rewrite occs_knit_equation.
+    have : ta1 <=? tb1 = false => [ | -> ].
+      by rewrite leb_gt.
+    rewrite (@coalesce_min_lt_left _ _ _ _ _ tb1 b1) => //.
+    have : is_asc_timing (coalesce f (occs_knit ((ta1, a1) :: sa1, sb1))) = true => [ | H7 ].
+      apply H1 => //.
+      by apply is_asc_timing_tail in H5.
+    rewrite /= H7.
+    move : (coalesce_occs_knit_exists_left f _ _ _ _ H4 H5 H6) => [tm1] [m1] [sm1] [H8 H9].
+    rewrite H8.
     rewrite Bool.andb_true_r.
     by rewrite ltb_lt.
-Admitted.
+Qed.
 
 Lemma filter_eq a (f : a -> bool) (a0 : a) (s0 : list a) :
   List.filter f (a0 :: s0) = if f a0 then a0 :: List.filter f s0 else List.filter f s0.
