@@ -291,6 +291,25 @@ apply is_asc_timing_head_lt in H1.
 by rewrite leb_nle -lt_nge.
 Qed.
 
+Lemma double_induction_list a b (P : list a -> list b -> Prop) :
+  (forall sa, P sa []) ->
+  (forall sb, P [] sb) ->
+  (forall sa1 sb1,
+    (forall a1, P (a1 :: sa1) sb1) ->
+    (forall b1, P sa1 (b1 :: sb1)) ->
+    P sa1 sb1 ->
+    forall a1 b1, P (a1 :: sa1) (b1 :: sb1)
+  ) ->
+  forall sa sb, P sa sb.
+Proof.
+move => H1 H2 H3.
+induction sa as [ | a1 sa1 ] => // sb.
+move : a1 sa1 IHsa1.
+induction sb as [ | b1 sb1 ] => // a1 sa1 IHsa1.
+apply H3 => // a0.
+by apply IHsb1.
+Qed.
+
 Lemma coalesce_occs_knit_exists_right a (f : a -> a -> a) (ta1 tb1 : time) (a1 b1 : a) (sa1 sb1 : str a) :
   is_asc_timing ((ta1, a1) :: sa1) = true ->
   is_asc_timing ((tb1, b1) :: sb1) = true ->
@@ -307,16 +326,16 @@ induction sa1 as [ | [ta2 a2] sa2 ] => ta1 a1 tb1 b1 sb1 H1 H2 H3.
   by rewrite is_asc_timing_to_coalesce_eq.
 rewrite occs_knit_equation.
 case (ta2 <=? tb1).
-- exists ta2.
-  exists a2. (* もっとIHsa2を使えば証明できそうかも *)
-  exists (occs_knit (sa2, (tb1, b1) :: sb1)).
-  split.
-  + move : (IHsa2 ta1 a1 tb1 b1 sb1) => H4.
-    case H4 => // [ | tm1 [m1] [sm1] ].
-      by apply is_asc_timing_skip in H1.
-    case => H5 H6.
-    Search list.
-
+- exists tb1.
+  apply (double_induction_list (
+    fun sa' sb' =>
+      exists (m1 : a) (sm1 : list (time * a)),
+        coalesce f ((ta2, a2) :: occs_knit (sa', (tb1, b1) :: sb')) = (tb1, m1) :: sm1 /\ ta1 < tb1
+  )).
+  + admit.
+  + admit.
+  + move => sa' sb' H4 H5 H6 [tsa'1 a'1] [tsb'1 b'1].
+        
 
 Admitted.
 
@@ -335,28 +354,6 @@ Lemma coalesce_occs_knit_or a (f : a -> a -> a) (t1 : time) (a1 b1 : a) (sa1 sb1
   coalesce f (occs_knit (sa1, sb1)) = nil \/ exists tm1 m1 sm1, coalesce f (occs_knit (sa1, sb1)) = (tm1, m1) :: sm1 /\ t1 < tm1.
 Proof.
 Admitted.
-
-(* 
-list_ind:
-  forall [A : Type] (P : list A -> Prop),
-  P [] ->
-  (forall (a : A) (l : list A), P l -> P (a :: l)) ->
-  forall l : list A, P l
- *)
-
-Lemma double_induction_list a b (P : list a -> list b -> Prop) :
-  (forall sa, P sa []) ->
-  (forall sb, P [] sb) ->
-  (forall sa1 sb1, (forall a1, P (a1 :: sa1) sb1) -> (forall b1, P sa1 (b1 :: sb1)) -> P sa1 sb1 -> forall a1 b1, P (a1 :: sa1) (b1 :: sb1)) ->
-  forall sa sb, P sa sb.
-Proof.
-move => H1 H2 H3.
-induction sa as [ | a1 sa1 ] => // sb.
-move : a1 sa1 IHsa1.
-induction sb as [ | b1 sb1 ] => // a1 sa1 IHsa1.
-apply H3 => // a0.
-by apply IHsb1.
-Qed.
 
 Lemma is_asc_timing_merge a (sa sb : stream a) (f : a -> a -> a) :
   is_asc_timing (occs sa) = true ->
