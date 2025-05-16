@@ -217,6 +217,39 @@ case H1 => /= [ -> | H3 ]; clear H1.
     by apply IHs2_1.
 Qed.
 
+Lemma coalesce_exists_head a (f : a -> a -> a) (ta1 : time) (a1 : a) (sa1 : str a) :
+  exists a1' sa1', coalesce f ((ta1, a1) :: sa1) = (ta1, a1') :: sa1'.
+Proof.
+move : ta1 a1.
+induction sa1 as [ | [ta2 a2] sa2 ] => ta1 a1.
+  exists a1.
+  exists [].
+  by rewrite 2!coalesce_equation.
+rewrite coalesce_equation.
+case (ta1 =? ta2).
+- move : (IHsa2 ta1 (f a1 a2)) => [a1'] [sa1'] H1.
+  exists a1'.
+  by exists sa1'.
+- exists a1.
+  by exists (coalesce f ((ta2, a2) :: sa2)).
+Qed.
+
+Lemma occs_knit_exists a (t : time) (ta1 tb1 : time) (a1 b1 : a) (sa1 sb1 : str a) :
+  t < ta1 ->
+  t < tb1 ->
+  exists tm1 m1 sm1, occs_knit ((ta1, a1) :: sa1, (tb1, b1) :: sb1) = (tm1, m1) :: sm1 /\ t < tm1.
+Proof.
+move => H1 H2.
+rewrite occs_knit_equation.
+case (ta1 <=? tb1).
+- exists ta1.
+  exists a1.
+  by exists (occs_knit (sa1, (tb1, b1) :: sb1)).
+- exists tb1.
+  exists b1.
+  by exists (occs_knit ((ta1, a1) :: sa1, sb1)).
+Qed.
+
 Lemma steps_knit_nil_right p a (f0 : p -> a) (p0 : p) (cf : list (time * (p -> a))) :
   steps_knit f0 p0 (cf, []) = map (fun tp => (fst tp, (snd tp) p0)) cf.
 Proof.

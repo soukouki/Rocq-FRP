@@ -291,6 +291,94 @@ apply is_asc_timing_head_lt in H1.
 by rewrite leb_nle -lt_nge.
 Qed.
 
+Lemma coalesce_occs_knit_exists_left a (f : a -> a -> a) (ta1 tb1 : time) (a1 b1 : a) (sa1 sb1 : str a) :
+  is_asc_timing ((ta1, a1) :: sa1) = true ->
+  is_asc_timing ((tb1, b1) :: sb1) = true ->
+  tb1 < ta1 ->
+  exists tm1 m1 sm1,
+    coalesce f (occs_knit ((ta1, a1) :: sa1, sb1)) = (tm1, m1) :: sm1 /\ tb1 < tm1.
+Proof.
+move => H1 H2 H3.
+move : H2.
+case sb1 => [ | [tb2 b2] sb2 ] => H2.
+  rewrite occs_knit_nil_right.
+  move : (coalesce_exists_head f ta1 a1 sa1) => [m1] [sm1] ->.
+  exists ta1.
+  exists m1.
+  by exists sm1.
+move : (@occs_knit_exists a tb1 ta1 tb2 a1 b2 sa1 sb2) => [ // | | tm1 [m1] [sm1] [-> H5] ].
+  by apply is_asc_timing_head_lt in H2.
+move : (coalesce_exists_head f tm1 m1 sm1) => [m1'] [sm1'] ->.
+exists tm1.
+exists m1'.
+by exists sm1'.
+Qed.
+
+Lemma coalesce_occs_knit_exists_right a (f : a -> a -> a) (ta1 tb1 : time) (a1 b1 : a) (sa1 sb1 : str a) :
+  is_asc_timing ((ta1, a1) :: sa1) = true ->
+  is_asc_timing ((tb1, b1) :: sb1) = true ->
+  ta1 < tb1 ->
+  exists tm1 m1 sm1,
+    coalesce f (occs_knit (sa1, (tb1, b1) :: sb1)) = (tm1, m1) :: sm1 /\ ta1 < tm1.
+Proof.
+move => H1 H2 H3.
+move : H1.
+case sa1 => [ | [ta2 a2] sa2 ] => H1.
+  rewrite occs_knit_nil_left.
+  move : (coalesce_exists_head f tb1 b1 sb1) => [m1] [sm1] ->.
+  exists tb1.
+  exists m1.
+  by exists sm1.
+move : (@occs_knit_exists a ta1 ta2 tb1 a2 b1 sa2 sb1) => [ | // | tm1 [m1] [sm1] [-> H5] ].
+  by apply is_asc_timing_head_lt in H1.
+move : (coalesce_exists_head f tm1 m1 sm1) => [m1'] [sm1'] ->.
+exists tm1.
+exists m1'.
+by exists sm1'.
+Qed.
+
+Lemma coalesce_occs_knit_or a (f : a -> a -> a) (t1 : time) (a1 b1 : a) (sa1 sb1 : str a) :
+  is_asc_timing ((t1, a1) :: sa1) = true ->
+  is_asc_timing ((t1, b1) :: sb1) = true ->
+  coalesce f (occs_knit (sa1, sb1)) = nil \/ exists tm1 m1 sm1, coalesce f (occs_knit (sa1, sb1)) = (tm1, m1) :: sm1 /\ t1 < tm1.
+Proof.
+case sa1 => [ | [ta2 a2] sa2 ];
+case sb1 => [ | [tb2 b2] sb2 ] => H1 H2.
+- left.
+  by rewrite occs_knit_equation coalesce_equation.
+- right.
+  rewrite occs_knit_nil_left.
+  move : (coalesce_exists_head f tb2 b2 sb2) => [m1] [sm1] ->.
+  exists tb2.
+  exists m1.
+  exists sm1.
+  split => //.
+  by apply is_asc_timing_head_lt in H2.
+- right.
+  rewrite occs_knit_nil_right.
+  move : (coalesce_exists_head f ta2 a2 sa2) => [m1] [sm1] ->.
+  exists ta2.
+  exists m1.
+  exists sm1.
+  split => //.
+  by apply is_asc_timing_head_lt in H1.
+- right.
+  rewrite occs_knit_equation.
+  case (ta2 <=? tb2).
+  + move : (coalesce_exists_head f ta2 a2 (occs_knit (sa2, (tb2, b2) :: sb2))) => [m1] [sm1] ->.
+    exists ta2.
+    exists m1.
+    exists sm1.
+    split => //.
+    by apply is_asc_timing_head_lt in H1.
+  + move : (coalesce_exists_head f tb2 b2 (occs_knit ((ta2, a2) :: sa2, sb2))) => [m1] [sm1] ->.
+    exists tb2.
+    exists m1.
+    exists sm1.
+    split => //.
+    by apply is_asc_timing_head_lt in H2.
+Qed.
+
 Lemma double_induction_list a b (P : list a -> list b -> Prop) :
   (forall sa, P sa []) ->
   (forall sb, P [] sb) ->
@@ -309,91 +397,6 @@ induction sb as [ | b1 sb1 ] => // a1 sa1 IHsa1.
 apply H3 => // a0.
 by apply IHsb1.
 Qed.
-
-Lemma coalesce_exists_head a (f : a -> a -> a) (ta1 : time) (a1 : a) (sa1 : str a) :
-  exists a1' sa1', coalesce f ((ta1, a1) :: sa1) = (ta1, a1') :: sa1'.
-Proof.
-move : ta1 a1.
-induction sa1 as [ | [ta2 a2] sa2 ] => ta1 a1.
-  exists a1.
-  exists [].
-  by rewrite 2!coalesce_equation.
-rewrite coalesce_equation.
-case (ta1 =? ta2).
-- move : (IHsa2 ta1 (f a1 a2)) => [a1'] [sa1'] H1.
-  exists a1'.
-  by exists sa1'.
-- exists a1.
-  by exists (coalesce f ((ta2, a2) :: sa2)).
-Qed.
-
-Lemma occs_knit_left a (ta1 : time) (a1 : a) (sa1 sb0 : str a) :
-  exists tm1 m1 sm1, occs_knit ((ta1, a1) :: sa1, sb0) = (tm1, m1) :: sm1.
-Proof.
-case sa1 => [ | [ta2 a2] sa2 ].
-- case sb0 => [ | [tb1 b1] sb1 ].
-  + exists ta1.
-    exists a1.
-    exists [].
-    by rewrite occs_knit_equation.
-  + rewrite occs_knit_equation.
-    case (ta1 <=? tb1).
-    * exists ta1.
-      exists a1.
-      exists ((tb1, b1) :: sb1).
-      by rewrite occs_knit_nil_left.
-    * exists tb1.
-      exists b1.
-      by exists (occs_knit ([(ta1, a1)], sb1)).
-- case sb0 => [ | [tb1 b1] sb1 ].
-  + rewrite occs_knit_nil_right.
-    exists ta1.
-    exists a1.
-    by exists ((ta2, a2) :: sa2).
-  + rewrite occs_knit_equation.
-    case (ta1 <=? tb1).
-    * exists ta1.
-      exists a1.
-      by exists (occs_knit ((ta2, a2) :: sa2, (tb1, b1) :: sb1)).
-    * exists tb1.
-      exists b1.
-      by exists (occs_knit ((ta1, a1) :: (ta2, a2) :: sa2, sb1)).
-Qed.
-
-Lemma coalesce_occs_knit_exists_left a (f : a -> a -> a) (ta1 tb1 : time) (a1 b1 : a) (sa1 sb1 : str a) :
-  is_asc_timing ((ta1, a1) :: sa1) = true ->
-  is_asc_timing ((tb1, b1) :: sb1) = true ->
-  tb1 < ta1 ->
-  exists tm1 m1 sm1,
-    coalesce f (occs_knit ((ta1, a1) :: sa1, sb1)) = (tm1, m1) :: sm1 /\ tb1 < tm1.
-Proof.
-move => H1 H2 H3.
-move : (occs_knit_left ta1 a1 sa1 sb1) => [tm1] [m1] [sm1] H4.
-rewrite H4.
-move : (coalesce_exists_head f tm1 m1 sm1) => [a1'] [sa1'] H5.
-rewrite H5.
-exists tm1.
-exists a1'.
-exists sa1'.
-split => //.
-
-Admitted.
-
-Lemma coalesce_occs_knit_exists_right a (f : a -> a -> a) (ta1 tb1 : time) (a1 b1 : a) (sa1 sb1 : str a) :
-  is_asc_timing ((ta1, a1) :: sa1) = true ->
-  is_asc_timing ((tb1, b1) :: sb1) = true ->
-  ta1 < tb1 ->
-  exists tm1 m1 sm1,
-    coalesce f (occs_knit (sa1, (tb1, b1) :: sb1)) = (tm1, m1) :: sm1 /\ ta1 < tm1.
-Proof.
-Admitted.
-
-Lemma coalesce_occs_knit_or a (f : a -> a -> a) (t1 : time) (a1 b1 : a) (sa1 sb1 : str a) :
-  is_asc_timing ((t1, a1) :: sa1) = true ->
-  is_asc_timing ((t1, b1) :: sb1) = true ->
-  coalesce f (occs_knit (sa1, sb1)) = nil \/ exists tm1 m1 sm1, coalesce f (occs_knit (sa1, sb1)) = (tm1, m1) :: sm1 /\ t1 < tm1.
-Proof.
-Admitted.
 
 Lemma is_asc_timing_merge a (sa sb : stream a) (f : a -> a -> a) :
   is_asc_timing (occs sa) = true ->
