@@ -29,13 +29,15 @@ Hypothesis Hy1 : cOut = apply cFunc cValue.
 Theorem T1 : subset_timing (cell_timing cFunc) (cell_timing cOut).
 Proof.
 rewrite Hy1.
-apply apply_subset_timing_left.
+apply subset_timing_apply_left.
+apply subset_timing_is_reflective.
 Qed.
 
 Theorem T2 : subset_timing (cell_timing cValue) (cell_timing cOut).
 Proof.
 rewrite Hy1.
-apply apply_subset_timing_right.
+apply subset_timing_apply_right.
+apply subset_timing_is_reflective.
 Qed.
 
 End Sample4_Sample4.

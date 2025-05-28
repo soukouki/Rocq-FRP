@@ -8,7 +8,7 @@ Definition timing := list time.
 
 Definition same_timing (a b : timing) := a = b.
 
-Theorem same_timing_reflective a : same_timing a a.
+Theorem same_timing_is_reflective a : same_timing a a.
 Proof. by []. Qed.
 
 Theorem same_timing_is_transitive a b c : same_timing a b -> same_timing b c -> same_timing a c.
@@ -48,7 +48,7 @@ induction (occs s) => //=.
 by rewrite IHs0.
 Qed.
 
-Theorem merge_subset_timing_left a (f : a -> a -> a) (s1 s2 : stream a) : subset_timing (stream_timing s1) (stream_timing (merge s1 s2 f)).
+Lemma merge_subset_timing_left a (f : a -> a -> a) (s1 s2 : stream a) : subset_timing (stream_timing s1) (stream_timing (merge s1 s2 f)).
 Proof.
 rewrite /stream_timing /=.
 case (occs s2) as [ | [t2_1 a2_1] s2_1 ] => [ | t' H2 ].
@@ -68,7 +68,7 @@ case (occs s2) as [ | [t2_1 a2_1] s2_1 ] => [ | t' H2 ].
     by apply occs_knit_in_left.
 Qed.
 
-Theorem merge_subset_timing_right a (f : a -> a -> a) (s1 s2 : stream a) :
+Lemma merge_subset_timing_right a (f : a -> a -> a) (s1 s2 : stream a) :
   subset_timing (stream_timing s2) (stream_timing (merge s1 s2 f)).
 Proof.
 rewrite /stream_timing /=.
@@ -89,8 +89,8 @@ case (occs s1) as [ | [t1_1 a1_1] s1_1 ] => [ | t' H2 ].
       by apply occs_knit_in_right.
 Qed.
 
-(* 使いやすくするためにsubset_timing_is_transitiveと合わせた補題 *)
-Lemma subset_timing_merge_left a (t1 : timing) (s1 s2 : stream a) (f : a -> a -> a) :
+(* 使いやすくするためにsubset_timing_is_transitiveと合わせた定理 *)
+Theorem subset_timing_merge_left a (t1 : timing) (s1 s2 : stream a) (f : a -> a -> a) :
   subset_timing t1 (stream_timing s1) ->
   subset_timing t1 (stream_timing (merge s1 s2 f)).
 Proof.
@@ -100,7 +100,7 @@ by apply merge_subset_timing_left.
 Qed.
 Hint Resolve subset_timing_merge_left : frp.
 
-Lemma subset_timing_merge_right a (t1 : timing) (s1 s2 : stream a) (f : a -> a -> a) :
+Theorem subset_timing_merge_right a (t1 : timing) (s1 s2 : stream a) (f : a -> a -> a) :
   subset_timing t1 (stream_timing s2) ->
   subset_timing t1 (stream_timing (merge s1 s2 f)).
 Proof.
@@ -109,6 +109,7 @@ apply subset_timing_is_transitive with (b := stream_timing s2) => //.
 by apply merge_subset_timing_right.
 Qed.
 Hint Resolve subset_timing_merge_right : frp.
+
 Theorem filter_subset_timing a b (f : a -> bool) (s1 : stream a) (s2 : stream b) :
   same_timing (stream_timing s1) (stream_timing s2) ->
   subset_timing (stream_timing (filter f s1)) (stream_timing s2).
@@ -158,7 +159,7 @@ rewrite /= in IHc1.
 by rewrite IHc1.
 Qed.
 
-Theorem apply_subset_timing_left p b (cf : cell (p -> b)) (cp : cell p) : subset_timing (cell_timing cf) (cell_timing (apply cf cp)).
+Lemma apply_subset_timing_left p b (cf : cell (p -> b)) (cp : cell p) : subset_timing (cell_timing cf) (cell_timing (apply cf cp)).
 Proof.
 rewrite /cell_timing /=.
 move : (steps cf) (steps cp) => [f0 cf0] [p0 cp0]; clear cf cp.
@@ -166,11 +167,29 @@ move => t H1.
 by apply steps_knit_in_left.
 Qed.
 
-Theorem apply_subset_timing_right p a (cf : cell (p -> a)) (cp : cell p) : subset_timing (cell_timing cp) (cell_timing (apply cf cp)).
+Lemma apply_subset_timing_right p a (cf : cell (p -> a)) (cp : cell p) : subset_timing (cell_timing cp) (cell_timing (apply cf cp)).
 rewrite /cell_timing /=.
 move : (steps cf) (steps cp) => [f0 cf0] [p0 cp0]; clear cf cp.
 move => t H1.
 by apply steps_knit_in_right.
+Qed.
+
+Theorem subset_timing_apply_left p a (t1 : timing) (cf : cell (p -> a)) (cp : cell p) :
+  subset_timing t1 (cell_timing cf) ->
+  subset_timing t1 (cell_timing (apply cf cp)).
+Proof.
+move => H1 t H2.
+apply apply_subset_timing_left.
+by apply H1.
+Qed.
+
+Theorem subset_timing_apply_right p a (t1 : timing) (cf : cell (p -> a)) (cp : cell p) :
+  subset_timing t1 (cell_timing cp) ->
+  subset_timing t1 (cell_timing (apply cf cp)).
+Proof.
+move => H1 t H2.
+apply apply_subset_timing_right.
+by apply H1.
 Qed.
 
 Theorem cell_timing_apply_constant_left p a (fcons : p -> a) (c : cell p) :
