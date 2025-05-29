@@ -48,6 +48,16 @@ induction (occs s) => //=.
 by rewrite IHs0.
 Qed.
 
+(* Primitiveにある補題をTimingを使った形に変換する *)
+Lemma occs_eq_to_timing_eq a (s1 s2 : stream a) : occs s1 = occs s2 -> stream_timing s1 = stream_timing s2.
+Proof. move => H1; by rewrite /stream_timing H1. Qed.
+
+Theorem stream_timing_merge_never_left a f (s : stream a) : stream_timing (merge (never a) s f) = stream_timing s.
+Proof. by apply /occs_eq_to_timing_eq /occs_merge_never_left. Qed.
+
+Theorem stream_timing_merge_never_right a f (s : stream a) : stream_timing (merge s (never a) f) = stream_timing s.
+Proof. by apply /occs_eq_to_timing_eq /occs_merge_never_right. Qed.
+
 Lemma merge_subset_timing_left a (f : a -> a -> a) (s1 s2 : stream a) : subset_timing (stream_timing s1) (stream_timing (merge s1 s2 f)).
 Proof.
 rewrite /stream_timing /=.
@@ -217,19 +227,6 @@ rewrite steps_knit_equation /=.
 rewrite -IHcf1; clear IHcf1.
 by rewrite 2!steps_knit_equation.
 Qed.
-
-(* Primitiveにある補題をTimingを使った形に変換する *)
-
-Lemma occs_eq_to_timing_eq a (s1 s2 : stream a) : occs s1 = occs s2 -> stream_timing s1 = stream_timing s2.
-Proof. move => H1; by rewrite /stream_timing H1. Qed.
-
-Theorem stream_timing_merge_never_left a f (s : stream a) : stream_timing (merge (never a) s f) = stream_timing s.
-Proof. by apply /occs_eq_to_timing_eq /occs_merge_never_left. Qed.
-
-Theorem stream_timing_merge_never_right a f (s : stream a) : stream_timing (merge s (never a) f) = stream_timing s.
-Proof. by apply /occs_eq_to_timing_eq /occs_merge_never_right. Qed.
-
-
 
 
 

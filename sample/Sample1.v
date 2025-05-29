@@ -3,6 +3,8 @@ Set Implicit Arguments.
 From Stdlib Require Import ssreflect.
 From CoqFRP Require Import FRP Timing Tactics.
 
+Set Default Proof Mode "Ltac2".
+
 (* 
 // map, snapshot, merge, neverを含む例
 public class Sample1 {
@@ -38,44 +40,16 @@ Definition sB2 := merge sB1 (never a) f3.
 Variable f4 : a -> a -> a.
 Definition sC1 := merge sA2 sB2 f4.
 
-From Ltac2 Require Import Ltac2 Control Std List Message.
-Ltac2 clause_concl := { Std.on_hyps := None; Std.on_concl := Std.AllOccurrences }.
-Ltac2 frp_unfold (defs : reference list) :=
-  Std.unfold (List.map (fun r => (r, AllOccurrences)) defs) clause_concl.
-Ltac2 rewriting := { Std.rew_orient := None; Std.rew_repeat := Std.RepeatPlus; Std.rew_equatn := (fun () => Control.goal (), Std.NoBindings ) }.
-Ltac2 frp_rewrite (hyps : reference list) :=
-  Std.rewrite true [rewriting] clause_concl None.
-Ltac2 frp_auto (defs : reference list) (hyps : reference list) :=
-  frp_unfold defs; frp_rewrite hyps.
-Proof Mode "Classic".
-
 Theorem T1 : different_timing (stream_timing sA2) (stream_timing sB2).
-Proof Mode "Ltac2".
-frp_unfold [reference:(sA2); reference:(sB2)].
-frp_rewrite [].
-Proof Mode "Classic".
-rewrite /sA2 /sB2.
-rewrite stream_timing_snapshot.
-rewrite stream_timing_map_s.
-rewrite stream_timing_merge_never_right.
-apply Hy1.
+frp_auto [reference:(sC1); reference:(sA2); reference:(sB2)].
 Qed.
 
 Theorem T2 : subset_timing (stream_timing sA1) (stream_timing sC1).
-Proof Mode "Classic".
-rewrite /sC1.
-rewrite /sA2 /sB2.
-apply subset_timing_merge_left.
-rewrite stream_timing_snapshot.
-by rewrite stream_timing_map_s.
+frp_auto [reference:(sC1); reference:(sA2); reference:(sB2)].
 Qed.
 
 Theorem T3 : subset_timing (stream_timing sB1) (stream_timing sC1).
-Proof Mode "Classic".
-rewrite /sC1.
-rewrite /sA2 /sB2.
-apply subset_timing_merge_right.
-by rewrite stream_timing_merge_never_right.
+frp_auto [reference:(sC1); reference:(sA2); reference:(sB2)].
 Qed.
 
 End Sample1_Sample1.

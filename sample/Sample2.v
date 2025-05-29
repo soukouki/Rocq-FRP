@@ -1,7 +1,9 @@
 Set Implicit Arguments.
 
 From Stdlib Require Import ssreflect.
-From CoqFRP Require Import FRP Timing.
+From CoqFRP Require Import FRP Timing Tactics.
+
+Set Default Proof Mode "Ltac2".
 
 (* 
 // セルループを含む例
@@ -28,9 +30,11 @@ Variable v1 : a.
 Hypothesis Hy1 : cSum = hold v1 (snapshot f1 sAdd cSum).
 
 Theorem T1 : same_timing (stream_timing sAdd) (cell_timing cSum).
+frp_auto [].
 rewrite Hy1.
 rewrite cell_timing_hold.
-by rewrite stream_timing_snapshot.
+rewrite stream_timing_snapshot.
+apply same_timing_is_reflective.
 Qed.
 
 End Sample2_Sample2.

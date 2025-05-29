@@ -1,7 +1,9 @@
 Set Implicit Arguments.
 
 From Stdlib Require Import ssreflect.
-From CoqFRP Require Import FRP Timing.
+From CoqFRP Require Import FRP Timing Tactics.
+
+Set Default Proof Mode "Ltac2".
 
 (* 
 public class Test6 {
