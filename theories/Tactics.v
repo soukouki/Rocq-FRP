@@ -27,41 +27,43 @@ Ltac2 do_rewrite (eq_name : constr) :=
   let after_tac := None in
   Std.rewrite evar_flag rewriting_list clause after_tac.
 
-(* rewrite用関数 *)
+(* 仮定のリストをrewriteする関数 *)
+Ltac2 rec frp_rewrite_hypotheses (hyps : constr list) :=
+  match hyps with
+  | [] => ()
+  | h :: rest =>
+      (* Message.print (Message.of_string (String.concat "" ["rewrite "; (Message.to_string (Message.of_constr h)); "."])); *)
+      (try0 (fun () => do_rewrite h));
+      frp_rewrite_hypotheses rest
+  end.
+
+(* rewriteを行うパターン *)
 Ltac2 rec frp_rewrite () :=
-  (* stream_timing (map ...) パターンの処理 *)
   (match! Control.goal () with
    | context[stream_timing (map_s _ _)] =>
        do_rewrite constr:(stream_timing_map_s);
        frp_rewrite ()
-   (* stream_timing (snapshot ...) パターンの処理 *)
    | context[stream_timing (snapshot _ _ _)] =>
        do_rewrite constr:(stream_timing_snapshot);
-       frp_rewrite ()  (* 再帰的に続行 *)
-   (* stream_timing (merge (never _) _ _) パターンの処理 *)
+       frp_rewrite ()
    | context[stream_timing (merge (never _) _ _)] =>
        do_rewrite constr:(stream_timing_merge_never_left);
-       frp_rewrite ()  (* 再帰的に続行 *)
-   (* stream_timing (merge _ (never _) _) パターンの処理 *)
+       frp_rewrite ()
    | context[stream_timing (merge _ (never _) _)] =>
        do_rewrite constr:(stream_timing_merge_never_right);
-       frp_rewrite ()  (* 再帰的に続行 *)
-   (* cell_timing (hold _ _) パターンの処理 *)
+       frp_rewrite ()
    | context[cell_timing (hold _ _)] =>
        do_rewrite constr:(cell_timing_hold);
-       frp_rewrite ()  (* 再帰的に続行 *)
-   (* cell_timing (map_c _ _) パターンの処理 *)
+       frp_rewrite ()
    | context[cell_timing (map_c _ _)] =>
        do_rewrite constr:(cell_timing_map_c);
-       frp_rewrite ()  (* 再帰的に続行 *)
-   (* cell_timing (apply (constant _) _) パターンの処理 *)
+       frp_rewrite ()
    | context[cell_timing (apply (constant _) _)] =>
        do_rewrite constr:(cell_timing_apply_constant_left);
-       frp_rewrite ()  (* 再帰的に続行 *)
-   (* cell_timing (apply _ (constant _)) パターンの処理 *)
+       frp_rewrite ()
    | context[cell_timing (apply _ (constant _))] =>
        do_rewrite constr:(cell_timing_apply_constant_right);
-       frp_rewrite ()  (* 再帰的に続行 *)
+       frp_rewrite ()
    | _ => ()
    end).
 
@@ -74,28 +76,23 @@ Ltac2 do_apply (lemma_name : constr) :=
   let intro_pattern_option := None in
   Std.apply advanced_flag evar_flag constr_with_bindings_list intro_pattern_option.
 
-(* apply用関数 *)
+(* applyを行うパターン *)
 Ltac2 rec frp_apply () :=
-  (* same_timing関数への反射性の適用 *)
   (match! Control.goal () with
    | context[same_timing ?_a ?_a] =>
        do_apply constr:(same_timing_is_reflective);
-       (* ゴールが残っている場合のみ再帰的に続行 *)
        Control.enter (fun () => frp_apply ())
-   (* same_timing関数への推移性の適用 *)
    | context[same_timing _ _] =>
        do_apply constr:(same_timing_is_transitive);
-       (* ゴールが残っている場合のみ再帰的に続行 *)
        Control.enter (fun () => frp_apply ())
-   (* subset_timing関数への反射性の適用 *)
    | context[subset_timing ?_a ?_a] =>
        do_apply constr:(subset_timing_is_reflective);
-       (* ゴールが残っている場合のみ再帰的に続行 *)
        Control.enter (fun () => frp_apply ())
-   (* subset_timing関数への推移性の適用 *)
    | context[subset_timing _ _] =>
        do_apply constr:(subset_timing_is_transitive);
-       (* ゴールが残っている場合のみ再帰的に続行 *)
+       Control.enter (fun () => frp_apply ())
+   | context[subset_timing (stream_timing (filter _ _)) (stream_timing _)] =>
+       do_apply constr:(filter_subset_timing);
        Control.enter (fun () => frp_apply ())
    | _ => ()
    end).
@@ -117,8 +114,6 @@ Ltac2 rec repeat_core_tactics () : unit :=
     let old_goal := Control.goal () in
     (* frp_rewriteを実行 *)
     (try0 frp_rewrite);
-    (* ゴールがなくなったら終了 *)
-    if Int.equal (Control.numgoals ()) 0 then () else
     (* frp_applyを実行 *)
     (try0 frp_apply);
     (* ゴールがなくなったら終了 *)
@@ -135,6 +130,7 @@ Ltac2 rec repeat_core_tactics () : unit :=
   else
     ().
 
+(* バックトラックが必要なパターン *)
 Ltac2 rec handle_special_patterns () : unit :=
   if Int.gt (Control.numgoals ()) 0 then
     (* subset_timing t1 (stream_timing (merge s1 s2 f)) パターンの処理 *)
@@ -150,7 +146,7 @@ Ltac2 rec handle_special_patterns () : unit :=
              repeat_core_tactics ();
              handle_special_patterns ())
      (* subset_timing t1 (cell_timing (apply cf cp)) パターンの処理 *)
-     | context[subset_timing _ (cell_timing (apply _ _))] =>
+     | subset_timing _ (cell_timing (apply _ _)) =>
          plus
            (fun () =>
              do_apply constr:(subset_timing_apply_left);
@@ -160,22 +156,41 @@ Ltac2 rec handle_special_patterns () : unit :=
              do_apply constr:(subset_timing_apply_right);
              repeat_core_tactics ();
              handle_special_patterns ())
+     (* それ以外の場合はエラーを出して、バックトラックを行う *)
+    | _ => backtrack_tactic_failure "frp_auto: backtracking"
      end)
   else
     ().
 
-Ltac2 frp_auto (defs : reference list) : unit :=
-  (* 1. frp_unfoldを実行 *)
+Ltac2 frp_auto (defs : reference list) (hyps : constr list) : unit :=
+  (* frp_unfoldを実行 *)
+  (Message.print (Message.of_string "frp_auto: unfolding definitions..."));
   (try0 (fun () => frp_unfold defs));
   
-  (* ゴールがなくなったら終了 *)
-  if Int.equal (Control.numgoals ()) 0 then () else
+  (* 仮定をrewriteする *)
+  Message.print (Message.of_string "frp_auto: rewriting hypotheses...");
+  frp_rewrite_hypotheses hyps;
+
+  (* liftやgateといった複数プリミティブで構成される要素を展開 *)
+  Message.print (Message.of_string "frp_auto: unfold definitions...");
+  unfold lift;
+  unfold gate;
   
-  (* 2-5. コアタクティックを繰り返し実行 *)
+  (* コアタクティックを繰り返し実行 *)
+  Message.print (Message.of_string "frp_auto: repeating core tactics...");
   repeat_core_tactics ();
   
   (* ゴールがなくなったら終了 *)
   if Int.equal (Control.numgoals ()) 0 then () else
   
-  (* 6-7. 特定パターンの処理 *)
+  (* merge, applyなどのバックトラックが必要なパターンを処理 *)
+  Message.print (Message.of_string "frp_auto: handling special patterns...");
   handle_special_patterns ().
+
+
+
+
+
+
+
+

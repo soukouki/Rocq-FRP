@@ -3,7 +3,7 @@
   (name CoqFRPSample)
   (theories CoqFRP)
   (flags
-    (-R "/home/%{env:USER=}/.opam/default/lib/coq/user-contrib/Stdlib" Stdlib)
-    (-R "/home/%{env:USER=}/.opam/default/lib/coq/user-contrib/Ltac2" Ltac2)
+    (-R "%{env:OPAM_SWITCH_PREFIX=}/lib/coq/user-contrib/Stdlib" Stdlib)
+    (-R "%{env:OPAM_SWITCH_PREFIX=}/lib/coq/user-contrib/Ltac2" Ltac2)
   )
 )

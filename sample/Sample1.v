@@ -40,16 +40,16 @@ Definition sB2 := merge sB1 (never a) f3.
 Variable f4 : a -> a -> a.
 Definition sC1 := merge sA2 sB2 f4.
 
-Theorem T1 : different_timing (stream_timing sA2) (stream_timing sB2).
-frp_auto [reference:(sC1); reference:(sA2); reference:(sB2)].
+Proposition T1 : different_timing (stream_timing sA2) (stream_timing sB2).
+frp_auto [reference:(sC1); reference:(sA2); reference:(sB2)] [].
 Qed.
 
-Theorem T2 : subset_timing (stream_timing sA1) (stream_timing sC1).
-frp_auto [reference:(sC1); reference:(sA2); reference:(sB2)].
+Proposition T2 : subset_timing (stream_timing sA1) (stream_timing sC1).
+frp_auto [reference:(sC1); reference:(sA2); reference:(sB2)] [].
 Qed.
 
-Theorem T3 : subset_timing (stream_timing sB1) (stream_timing sC1).
-frp_auto [reference:(sC1); reference:(sA2); reference:(sB2)].
+Proposition T3 : subset_timing (stream_timing sB1) (stream_timing sC1).
+frp_auto [reference:(sC1); reference:(sA2); reference:(sB2)] [].
 Qed.
 
 End Sample1_Sample1.

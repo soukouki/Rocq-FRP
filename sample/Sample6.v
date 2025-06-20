@@ -30,9 +30,10 @@ Variable sIn : stream a.
 (* sOut = helper(sIn); については、helperという関数呼び出しが入っているので翻訳しない *)
 
 Hypothesis Hy1 : same_timing (stream_timing sIn) (stream_timing sOut).
-Theorem T1 : same_timing (stream_timing sIn) (stream_timing sOut).
+
+Proposition T1 : same_timing (stream_timing sIn) (stream_timing sOut).
 Proof.
-exact Hy1.
+frp_auto [] [].
 Qed.
 
 End Sample6_Sample6.

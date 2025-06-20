@@ -392,8 +392,8 @@ Lemma double_induction_list a b (P : list a -> list b -> Prop) :
 Proof.
 move => H1 H2 H3.
 induction sa as [ | a1 sa1 ] => // sb.
-move : a1 sa1 IHsa1.
-induction sb as [ | b1 sb1 ] => // a1 sa1 IHsa1.
+move : a1 IHsa1.
+induction sb as [ | b1 sb1 ] => // a1 IHsa1.
 apply H3 => // a0.
 by apply IHsb1.
 Qed.

@@ -27,12 +27,9 @@ Variable cIn : cell bool.
 
 Hypothesis Hy1 : sOut = gate sIn cIn.
 
-Theorem T1 : subset_timing (stream_timing sOut) (stream_timing sIn).
+Proposition T1 : subset_timing (stream_timing sOut) (stream_timing sIn).
 Proof.
-rewrite Hy1 /gate.
-rewrite stream_timing_map_s.
-apply filter_subset_timing.
-by rewrite stream_timing_snapshot.
+frp_auto [] [constr:(Hy1)].
 Qed.
 
 End Sample5_Sample5.

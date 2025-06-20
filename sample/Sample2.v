@@ -29,8 +29,10 @@ Variable f1 : a -> a -> a.
 Variable v1 : a.
 Hypothesis Hy1 : cSum = hold v1 (snapshot f1 sAdd cSum).
 
-Theorem T1 : same_timing (stream_timing sAdd) (cell_timing cSum).
-frp_auto [].
+Proposition T1 : same_timing (stream_timing sAdd) (cell_timing cSum).
+frp_auto [] [constr:(Hy1)].
+Restart.
+Proof Mode "Classic".
 rewrite Hy1.
 rewrite cell_timing_hold.
 rewrite stream_timing_snapshot.

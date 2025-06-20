@@ -28,12 +28,9 @@ Variable v1 : a.
 Variable f1 : a -> a -> a.
 Hypothesis Hy1 : cOut = lift cIn (constant v1) f1.
 
-Theorem T1 : same_timing (cell_timing cIn) (cell_timing cOut).
+Proposition T1 : same_timing (cell_timing cIn) (cell_timing cOut).
 Proof.
-rewrite Hy1.
-rewrite /lift.
-rewrite cell_timing_apply_constant_right.
-by rewrite cell_timing_map_c.
+frp_auto [] [constr:(Hy1)].
 Qed.
 
 End Sample3_Sample3.
