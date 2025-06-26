@@ -1,5 +1,5 @@
 
-# CoqFRP
+# RocqFRP
 
 ## English
 
