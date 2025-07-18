@@ -45,6 +45,13 @@ frp_auto [reference:(sC1); reference:(sA2); reference:(sB2)] [].
 Qed.
 
 Proposition T2 : subset_timing (stream_timing sA1) (stream_timing sC1).
+Proof Mode "Classic".
+rewrite /sC1 /sA2.
+apply subset_timing_merge_left.
+rewrite stream_timing_snapshot.
+rewrite stream_timing_map_s.
+apply subset_timing_is_reflective.
+Restart.
 frp_auto [reference:(sC1); reference:(sA2); reference:(sB2)] [].
 Qed.
 

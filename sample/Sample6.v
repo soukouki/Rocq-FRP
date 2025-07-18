@@ -37,3 +37,15 @@ frp_auto [] [].
 Qed.
 
 End Sample6_Sample6.
+
+Section Sample6_helper.
+
+Variable a : Type.
+
+Variable sIn : stream a.
+
+Variable f : a -> a.
+
+Definition helper := map_s f sIn.
+
+End Sample6_helper.

@@ -31,12 +31,6 @@ Hypothesis Hy1 : cSum = hold v1 (snapshot f1 sAdd cSum).
 
 Proposition T1 : same_timing (stream_timing sAdd) (cell_timing cSum).
 frp_auto [] [constr:(Hy1)].
-Restart.
-Proof Mode "Classic".
-rewrite Hy1.
-rewrite cell_timing_hold.
-rewrite stream_timing_snapshot.
-apply same_timing_is_reflective.
 Qed.
 
 End Sample2_Sample2.

@@ -27,7 +27,7 @@ case s1 => [ _ _ | [t2 a2] s2 IHs1 H1 ].
     rewrite eqb_neq.
     apply lt_neq.
     apply is_asc_timing_lt with (a0 := a1) (a' := a2) (s0 := (t2, a2) :: s2) => //.
-    apply in_eq.
+    by apply in_eq.
   rewrite IHs1 => //.
   by apply is_asc_timing_tail in H1.
 Qed.
@@ -48,7 +48,7 @@ case s1 => [ _ _ | [t2 a2] s2 IHs1 H1].
     rewrite eqb_neq.
     apply lt_neq.
     apply is_asc_timing_lt with (a0 := a1) (a' := a2) (s0 := (t2, a2) :: s2) => //.
-    apply in_eq.
+    by apply in_eq.
   rewrite IHs1 => //.
   by apply is_asc_timing_tail in H1.
 Qed.
